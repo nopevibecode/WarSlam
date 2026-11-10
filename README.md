@@ -24,7 +24,15 @@ own.
 
 ## Installation
 
-1. Put the `WarSlam` folder in `Interface\AddOns\` so you have:
+**With the game launcher:** add the addon from its git link,
+`https://github.com/nopevibecode/warslam`. The launcher's update button picks
+up new versions. Then go to step 2.
+
+**By hand:**
+
+1. Download the files (green **Code** button, **Download ZIP**), and put them
+   in a folder named exactly `WarSlam` (not `warslam-main`) in
+   `Interface\AddOns\`, so you have:
    ```
    Interface\AddOns\WarSlam\WarSlam.toc
    Interface\AddOns\WarSlam\WarSlam.lua

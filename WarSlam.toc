@@ -1,0 +1,7 @@
+## Interface: 11200
+## Title: WarSlam
+## Notes: One-button Slam rotation (Slam > BT/MS > Whirlwind, optional Sunder), swing-timer aware
+## Author: you
+## SavedVariables: WarSlamLog, WarSlamSettings
+WarSlam.lua
+WarSlamUI.lua

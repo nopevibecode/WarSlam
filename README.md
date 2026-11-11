@@ -7,6 +7,12 @@ It's built and tested on OctoWoW, where Slam's cast time scales with your
 haste and Slam can be cast while moving. On other 1.12 servers with
 different Slam rules, the timings won't be right.
 
+> **Tested with Fury.** WarSlam supports Arms (Mortal Strike instead of
+> Bloodthirst, Improved Slam read from your talents), and the fundamentals
+> are the same. But all the testing and fine tuning was done with a Fury
+> spec, so results with Arms, especially with Improved Slam's shorter cast,
+> aren't guaranteed.
+
 You press one key and WarSlam picks the right ability at that moment: Slam,
 a GCD ability (Bloodthirst / Mortal Strike / Whirlwind, optionally Sunder
 Armor), and Heroic Strike or Cleave when you have rage to spare. It reads

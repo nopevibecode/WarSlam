@@ -1,7 +1,7 @@
 ## Interface: 11200
 ## Title: WarSlam
-## Notes: One-button Slam rotation (Slam > BT/MS > Whirlwind, optional Sunder), swing-timer aware
-## Author: you
+## Notes: One-button Slam rotation for OctoWoW warriors (needs SP_SwingTimer)
+## Author: nopevibecode
 ## SavedVariables: WarSlamLog, WarSlamSettings
 WarSlam.lua
 WarSlamUI.lua

@@ -1,6 +1,11 @@
 # WarSlam
 
-One-button Slam rotation for warriors on the vanilla 1.12 client.
+One-button Slam rotation for warriors on the **OctoWoW** private server
+(vanilla 1.12 client).
+
+It's built and tested on OctoWoW, where Slam's cast time scales with your
+haste and Slam can be cast while moving. On other 1.12 servers with
+different Slam rules, the timings won't be right.
 
 You press one key and WarSlam picks the right ability at that moment: Slam,
 a GCD ability (Bloodthirst / Mortal Strike / Whirlwind, optionally Sunder
@@ -14,11 +19,12 @@ own.
 
 ## Requirements
 
-- Vanilla 1.12 client (English spell names).
-- A swing timer addon that exposes the global `st_timer`. This is the same
-  variable used by the classic Slam macro:
-  `/run if st_timer>UnitAttackSpeed"player"*0.55 then CastSpellByName"Slam()" end`
-  If that macro works for you, WarSlam will too.
+- The OctoWoW client (vanilla 1.12, English spell names).
+- The **SP_SwingTimer** addon, in its version adapted to OctoWoW:
+  https://github.com/nopevibecode/SP_SwingTimer
+  (it can be installed from the launcher with that link too). WarSlam reads
+  its `st_timer` value, the time left before your next swing, on every
+  press. Without it, WarSlam does nothing.
 - Optional: the **Nampower** client mod, for spell queuing (see below).
 
 
@@ -487,8 +493,8 @@ costs almost nothing per frame. The parts worth knowing about:
 
 ## Troubleshooting
 
-- **Nothing happens:** run `/warslam`. If `st_timer = nil`, your swing timer
-  addon isn't loaded. If a spell shows `slot nil`, it isn't in your spellbook,
+- **Nothing happens:** run `/warslam`. If `st_timer = nil`, SP_SwingTimer isn't
+  installed or isn't loaded. If a spell shows `slot nil`, it isn't in your spellbook,
   or your client isn't in English.
 - **A different spell is cast** (e.g. Charge): check you don't have another
   macro with the same name.
@@ -501,8 +507,8 @@ costs almost nothing per frame. The parts worth knowing about:
 
 # In depth: how WarSlam decides, and every setting
 
-This part explains the reasoning behind the rotation, what we learned from
-testing on OctoWoW, and every parameter you can change. You don't need it to
+This part explains the reasoning behind the rotation and every parameter you
+can change. You don't need it to
 use the addon. It's for tuning, or for understanding why a press did what it
 did.
 
@@ -520,7 +526,7 @@ One character = 0.1s. The "seconds" ruler shows the last digit (…8 9 0 1 = 8s,
 
 ## 1. The building blocks
 
-**Swing timer.** Your swing timer addon exposes `st_timer`: the seconds left
+**Swing timer.** SP_SwingTimer exposes `st_timer`: the seconds left
 before your next main-hand auto. WarSlam divides it by your **current**
 attack speed, which includes Flurry and other haste, to get the % of the swing
 left. Every rule below works on that percentage, so the rotation adapts to
@@ -830,7 +836,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `GCD_SLACK` | 0 | window | How far a GCD may run into the next Slam window. Slow weapons only; fast weapons always use 0. Keep 0 (§3). |
 | `CAST_LOCK` | 0.50 | window | Ignore presses this long after sending Slam or a GCD ability, unless the game confirms the cast first. Stops double casts. |
 | `SWING_JUMP` | 0.01 | `/run` | How much `st_timer` must jump up to count as a new swing. |
-| `ST_UNIT` | "seconds" | `/run` | `"seconds"` if `st_timer` counts seconds left (yours does), `"fraction"` if it goes from 1 to 0. |
+| `ST_UNIT` | "seconds" | `/run` | `"seconds"` if `st_timer` counts seconds left (SP_SwingTimer does), `"fraction"` if it goes from 1 to 0. |
 
 ### Fast weapons
 
@@ -916,37 +922,3 @@ queue Bloodthirst (fires in 0.09s)
 - Other lines: `waiting: GCD / Slam cast`, `locked` (double-press lock),
   `URGENT Sunder`, `OPENER`, `SWING new swing ... auto / reset`, `SUNDER
   landed by you / other`, `PROC ...`, `TEST ...`.
-
-## 12. What we learned along the way
-
-1. **`st_timer` is seconds, not a fraction.** An early version treated it as
-   0–1 and Slammed far too late. The fix is `ST_UNIT = "seconds"`.
-2. **Slam's cast scales with haste here** (2.5s at 3.6, 1.83s at 2.64), so
-   the Slam window can be expressed as a % of the swing, and "Auto"
-   (cast ÷ swing) is exact.
-3. **Lag protection was redundant**, since the swing timer already handles
-   it, so it was removed.
-4. **"The whole Slam must fit before the auto" blocked the late Slams you
-   wanted.** That check was dropped for the plain % window, which you tune
-   with `SLAM_FRAC`.
-5. **GCD slack costs Slams.** The strict rule (§3) is the right one.
-6. **Slam rage is paid at the end of the cast.** This matters when queuing.
-7. **Queued Slams need `NP_QueueCastTimeSpells` on**, and must never be
-   queued while the auto is waiting for the current Slam.
-8. **Sunder priority:** first when building, untouched at 5 stacks until 8s
-   left, then refreshed in the next GCD slot, with an urgent override at 4s.
-   Putting Sunder *last* in the list meant it never got a slot.
-9. **A queued Sunder isn't a landed Sunder.** An early version counted the
-   refresh as soon as it was queued. The next press then queued Bloodthirst
-   over it (Nampower keeps one queued GCD spell), the Sunder never went out,
-   and the stacks dropped. Now only confirmed Sunders count.
-10. **Most lost Slams after procs can't be saved.** An extra attack during a
-   GCD closes that swing's Slam window early. Using a GCD ability instead is
-   the best option left.
-11. **Weapon speed alone doesn't decide the rhythm; the hasted swing does.**
-    With 2H weapons (2.9–3.8) and Flurry, Slam + GCD every early Slam holds
-    from about a 3.0 weapon up. Extra haste on top is what brings faster
-    weapons into trade territory.
-12. **Measure strikes, not DPS.** Count Slam + BT/MS + WW over 60s
-    (`/warslam test`). It doesn't swing with crits, and it's what the
-    rotation is trying to maximise.

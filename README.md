@@ -16,6 +16,16 @@ having to react to them.
 WarSlam only acts when you press the button. It never casts anything on its
 own.
 
+It isn't meant to play for you. It makes the split-second calls a human
+can't react to in time, like where the Slam goes after a random Windfury or
+Hand of Justice reset. The rest is still up to you:
+
+- **Replace your Slam button with the WarSlam macro.** Keep your other
+  abilities on their own keys: on short fights you may want to fire them
+  yourself.
+- **Execute isn't handled.** When the target is under 20%, switch to
+  Execute yourself.
+
 
 ## Requirements
 

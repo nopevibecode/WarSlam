@@ -226,17 +226,29 @@ end)
 ------------------------------------------------------------------------
 local widgets = {}
 local refreshing = false
+local cur            -- the tab page widgets are being created on
+local currentTab = 1 -- remembered while the game runs
 
 local function Round(v, step)
   return math.floor(v / step + 0.5) * step
 end
 
-local function MakeSlider(key, label, minV, maxV, step, fmt, x, y, get, set)
+local function Tip(w, tip)
+  if not tip then return end
+  w:SetScript("OnEnter", function()
+    GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
+    GameTooltip:SetText(tip, 1, 1, 1, 1, 1)
+    GameTooltip:Show()
+  end)
+  w:SetScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
+local function MakeSlider(key, label, minV, maxV, step, fmt, x, y, get, set, tip)
   local name = "WarSlamUISlider" .. key
-  local s = CreateFrame("Slider", name, frame, "OptionsSliderTemplate")
+  local s = CreateFrame("Slider", name, cur, "OptionsSliderTemplate")
   s:SetWidth(240)
   s:SetHeight(16)
-  s:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
+  s:SetPoint("TOPLEFT", cur, "TOPLEFT", x, y)
   s:SetMinMaxValues(minV, maxV)
   s:SetValueStep(step)
   getglobal(name .. "Low"):SetText(string.format(fmt, minV))
@@ -260,16 +272,17 @@ local function MakeSlider(key, label, minV, maxV, step, fmt, x, y, get, set)
     Save()
     text:SetText(label .. ": |cffffffff" .. string.format(fmt, v) .. "|r")
   end)
+  Tip(s, tip)
   table.insert(widgets, s)
   return s
 end
 
 local function MakeCheck(key, label, x, y, get, set, tip)
   local name = "WarSlamUICheck" .. key
-  local c = CreateFrame("CheckButton", name, frame, "UICheckButtonTemplate")
+  local c = CreateFrame("CheckButton", name, cur, "UICheckButtonTemplate")
   c:SetWidth(24)
   c:SetHeight(24)
-  c:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
+  c:SetPoint("TOPLEFT", cur, "TOPLEFT", x, y)
   getglobal(name .. "Text"):SetText(label)
   c.Refresh = function()
     if get() then c:SetChecked(1) else c:SetChecked(nil) end
@@ -279,14 +292,7 @@ local function MakeCheck(key, label, x, y, get, set, tip)
     Save()
     if frame.RefreshAll then frame.RefreshAll() end
   end)
-  if tip then
-    c:SetScript("OnEnter", function()
-      GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
-      GameTooltip:SetText(tip, 1, 1, 1, 1, 1)
-      GameTooltip:Show()
-    end)
-    c:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  end
+  Tip(c, tip)
   table.insert(widgets, c)
   return c
 end
@@ -294,8 +300,8 @@ end
 -- options: list of { value =, text = } or a function returning one
 local function MakeDropdown(key, x, y, width, options, get, set)
   local name = "WarSlamUIDrop" .. key
-  local dd = CreateFrame("Frame", name, frame, "UIDropDownMenuTemplate")
-  dd:SetPoint("TOPLEFT", frame, "TOPLEFT", x - 16, y)
+  local dd = CreateFrame("Frame", name, cur, "UIDropDownMenuTemplate")
+  dd:SetPoint("TOPLEFT", cur, "TOPLEFT", x - 16, y)
   UIDropDownMenu_SetWidth(width, dd)
   local function List() if type(options) == "function" then return options() end return options end
   UIDropDownMenu_Initialize(dd, function()
@@ -323,34 +329,38 @@ local function MakeDropdown(key, x, y, width, options, get, set)
 end
 
 local function MakeButton(name, text, x, y, width, onClick, tip)
-  local b = CreateFrame("Button", name, frame, "UIPanelButtonTemplate")
+  local b = CreateFrame("Button", name, cur, "UIPanelButtonTemplate")
   b:SetWidth(width)
   b:SetHeight(22)
-  b:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
+  b:SetPoint("TOPLEFT", cur, "TOPLEFT", x, y)
   b:SetText(text)
   b:SetScript("OnClick", onClick)
-  if tip then
-    b:SetScript("OnEnter", function()
-      GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
-      GameTooltip:SetText(tip, 1, 1, 1, 1, 1)
-      GameTooltip:Show()
-    end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  end
+  Tip(b, tip)
   return b
 end
 
 local function Label(x, y, font, width)
-  local t = frame:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
-  t:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
+  local t = cur:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
+  t:SetPoint("TOPLEFT", cur, "TOPLEFT", x, y)
   if width then t:SetWidth(width) t:SetJustifyH("LEFT") end
   return t
 end
 
+-- section title inside a tab
+local function Head(x, y, text)
+  local t = Label(x - 4, y, "GameFontNormal")
+  t:SetText(text)
+  return t
+end
+
+local W, H = 600, 530
+local C1, C2 = 30, 315       -- the two columns of every tab
+local TOP = -112             -- where tab content starts
+
 local function Build()
   frame = CreateFrame("Frame", "WarSlamUIFrame", UIParent)
-  frame:SetWidth(880)
-  frame:SetHeight(700)
+  frame:SetWidth(W)
+  frame:SetHeight(H)
   frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
   frame:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -373,10 +383,11 @@ local function Build()
     if tick < 0.5 then return end
     tick = 0
     if frame.RefreshAuto then frame.RefreshAuto() end
-    if frame.RefreshSlow then frame.RefreshSlow() end
+    if frame.RefreshHeader then frame.RefreshHeader() end
     if frame.RefreshHsCost then frame.RefreshHsCost() end
   end)
 
+  cur = frame
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOP", frame, "TOP", 0, -18)
   title:SetText("WarSlam")
@@ -384,20 +395,86 @@ local function Build()
   local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6)
 
-  local x = 30
+  ----------------------------------------------------------------------
+  -- Header, on every tab: profile and weapon
+  ----------------------------------------------------------------------
+  local hProfile = Label(C1, -42, "GameFontHighlightSmall", W - 60)
+  local hWeapon = Label(C1, -58, "GameFontHighlightSmall", W - 60)
+  frame.RefreshHeader = function()
+    local sp, wname, wid = WarSlamWeapon()
+    local linked = wid and WarSlamSettings.weapons[wid]
+    local base = not linked and BaseProfileFor(sp)
+    local how = linked and "|cff20ff20linked to this weapon|r"
+      or (base and ("|cffffd000" .. base .. " by speed|r")) or "|cff888888not linked|r"
+    hProfile:SetText("Profile: |cffffffff" .. tostring(WarSlamSettings.active or "none") .. "|r  (" .. how .. ")")
+    local slow = WarSlamSlowWeapon()
+    hWeapon:SetText("Weapon: |cffffffff" .. tostring(wname or "none") .. "|r" ..
+      (sp and string.format(" %.2f", sp) or "") .. "  -  " ..
+      (slow and "|cff20ff20slow weapon rotation|r" or "|cffffd000fast weapon rotation|r"))
+  end
 
-  -- Slam
-  local slamSlider = MakeSlider("SlamFrac", "Slam window (swing left)", 0.40, 0.80, 0.01, "%.2f", x, -65,
+  ----------------------------------------------------------------------
+  -- Tabs
+  ----------------------------------------------------------------------
+  local TABS = { "Rotation", "Advanced", "Profiles & Tools" }
+  local pages, tabButtons = {}, {}
+  local function ShowTab(n)
+    currentTab = n
+    for i = 1, table.getn(pages) do
+      if i == n then
+        pages[i]:Show()
+        tabButtons[i]:LockHighlight()    -- the selected tab stays lit
+        tabButtons[i]:SetAlpha(1)
+      else
+        pages[i]:Hide()
+        tabButtons[i]:UnlockHighlight()
+        tabButtons[i]:SetAlpha(0.75)
+      end
+    end
+  end
+  frame.ShowTab = ShowTab
+  local tw = 170
+  for i = 1, table.getn(TABS) do
+    local b = CreateFrame("Button", "WarSlamUITab" .. i, frame, "UIPanelButtonTemplate")
+    b:SetWidth(tw)
+    b:SetHeight(24)
+    b:SetPoint("TOPLEFT", frame, "TOPLEFT", C1 - 6 + (i - 1) * (tw + 8), -78)
+    b:SetText(TABS[i])
+    b.tab = i
+    b:SetScript("OnClick", function() ShowTab(this.tab) end)
+    tabButtons[i] = b
+    local page = CreateFrame("Frame", nil, frame)
+    page:SetAllPoints(frame)
+    page:Hide()
+    pages[i] = page
+  end
+  local line = frame:CreateTexture(nil, "ARTWORK")
+  line:SetTexture(1, 1, 1, 0.15)
+  line:SetHeight(1)
+  line:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -106)
+  line:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -20, -106)
+
+  ----------------------------------------------------------------------
+  -- Tab 1: Rotation (what you change per weapon or per fight)
+  ----------------------------------------------------------------------
+  cur = pages[1]
+  local y = TOP
+
+  Head(C1, y, "Slam")
+  local slamSlider = MakeSlider("SlamFrac", "Slam window (swing left)", 0.40, 0.80, 0.01, "%.2f", C1, y - 26,
     function()
       if CFG.SLAM_FRAC == "auto" then return (WarSlamSlamFrac()) end   -- the value Auto uses now
       return CFG.SLAM_FRAC
     end,
     function(v) CFG.SLAM_FRAC = v end)
+  local autoCheck = MakeCheck("SlamAuto", "Auto (Slam cast / weapon speed)", C1 - 4, y - 60,
+    function() return CFG.SLAM_FRAC == "auto" end,
+    function(on)
+      if on then CFG.SLAM_FRAC = "auto" else CFG.SLAM_FRAC = Round(slamSlider:GetValue(), 0.01) end
+    end,
+    "Slam cast time (from your Improved Slam talent) divided\nby your weapon speed, rounded down to 0.05.")
   -- under the Auto box: what Auto is using right now
-  local autoInfo = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  autoInfo:SetPoint("TOPLEFT", frame, "TOPLEFT", x + 4, -122)
-  autoInfo:SetWidth(260)
-  autoInfo:SetJustifyH("LEFT")
+  local autoInfo = Label(C1 + 4, y - 84, "GameFontHighlightSmall", 260)
   frame.RefreshAuto = function()
     if CFG.SLAM_FRAC ~= "auto" then autoInfo:SetText("") return end
     local v, src, a, b, raw = WarSlamSlamFrac()
@@ -416,140 +493,149 @@ local function Build()
     autoInfo:SetText(txt)
   end
 
-  local autoCheck = MakeCheck("SlamAuto", "Auto (Slam cast / swing time)", x - 4, -100,
-    function() return CFG.SLAM_FRAC == "auto" end,
-    function(on)
-      if on then CFG.SLAM_FRAC = "auto" else CFG.SLAM_FRAC = Round(slamSlider:GetValue(), 0.01) end
-    end,
-    "Uses your measured Slam cast time divided by your swing time,\nso a Slam never delays the auto attack.")
-
-  -- GCD
-  MakeSlider("GcdSlack", "GCD slack (s, slow weapons only)", 0, 0.50, 0.05, "%.2f", x, -150,
-    function() return CFG.GCD_SLACK end,
-    function(v) CFG.GCD_SLACK = v end)
-
-  MakeSlider("CastLock", "Double-press lock (s)", 0, 1.00, 0.05, "%.2f", x, -200,
-    function() return CFG.CAST_LOCK end,
-    function(v) CFG.CAST_LOCK = v end)
-
-  -- Rage dumps
-  MakeSlider("StDump", "Heroic Strike at rage", 30, 100, 1, "%d", x, -250,
+  y = y - 116
+  Head(C1, y, "Rage dump")
+  MakeSlider("StDump", "Heroic Strike at rage", 30, 100, 1, "%d", C1, y - 26,
     function() return MODES.ST.dumpAt end,
     function(v) MODES.ST.dumpAt = v end)
-
-  MakeSlider("MtDump", "Cleave at rage", 20, 100, 1, "%d", x, -300,
+  MakeSlider("MtDump", "Cleave at rage", 20, 100, 1, "%d", C1, y - 74,
     function() return MODES.MT.dumpAt end,
     function(v) MODES.MT.dumpAt = v end)
-
   -- Heroic Strike cost: read from the Improved Heroic Strike talent
-  local hsCostLabel = Label(x, -352, "GameFontHighlightSmall", 260)
+  local hsCostLabel = Label(C1, y - 102, "GameFontHighlightSmall", 260)
   frame.RefreshHsCost = function()
     local cost, pts = WarSlamHsCost()
     hsCostLabel:SetText(string.format("Heroic Strike cost: |cffffd000%d rage|r (Improved Heroic Strike %d/3)", cost, pts or 0))
   end
 
-  -- Toggles
-  MakeCheck("Sunder", "Sunder Armor in single target", x - 4, -388,
+  y = y - 132
+  Head(C1, y, "Cooldowns")
+  MakeCheck("Juju", "Juju Flurry after Death Wish", C1 - 4, y - 20,
+    function() return CFG.DW_JUJU end,
+    function(on) CFG.DW_JUJU = on end,
+    "After a Death Wish armed with /run WarSlamDW(), the next\nWarSlam press past the delay uses a Juju Flurry from your\nbags on you. Skipped if you have none. It can't be used\nduring a Slam cast, so it may come a little after the delay.")
+  MakeSlider("JujuDelay", "Juju Flurry delay (s)", 5, 15, 1, "%d", C1, y - 64,
+    function() return CFG.DW_JUJU_DELAY end,
+    function(v) CFG.DW_JUJU_DELAY = v end)
+  local dwNote = Label(C1, y - 94, "GameFontDisableSmall", 260)
+  dwNote:SetText("Arm Death Wish for the next GCD with /run WarSlamDW()")
+
+  -- right column
+  y = TOP
+  Head(C2, y, "Fast weapon")
+  Label(C2, y - 22, "GameFontNormalSmall"):SetText("Slow weapon rotation")
+  MakeDropdown("Slow", C2, y - 36, 150, {
+      { value = "auto", text = "Auto (weapon speed)" },
+      { value = "yes",  text = "Yes: Slam + GCD" },
+      { value = "no",   text = "No: trade a Slam" },
+    },
+    function() return CFG.SLOW_WEAPON end,
+    function(v) CFG.SLOW_WEAPON = v; Save() end)
+  MakeCheck("Pair", "Fire BT + WW together", C2 - 4, y - 72,
+    function() return CFG.PAIR_STRIKES end,
+    function(on) CFG.PAIR_STRIKES = on end,
+    "Fast weapons only: when Bloodthirst / Mortal Strike and\nWhirlwind are both up and affordable, fire both for one\nSlam: auto, Slam, BT, auto, WW, auto, Slam (or BT, WW\nright after the auto when both fit before the next Slam).\nRage leeway and Heroic Strike threshold: Advanced tab.")
+
+  y = y - 116
+  Head(C2, y, "Buffs & debuffs")
+  MakeCheck("Sunder", "Sunder Armor (single target)", C2 - 4, y - 20,
     function() return CFG.USE_SUNDER end,
     function(on) CFG.USE_SUNDER = on; if WarSlamUpdateEvents then WarSlamUpdateEvents() end end,
-    "Bosses: under 5 stacks Sunder is the first GCD ability\n(it may even take a Slam's slot). 8s or less left: refreshed\nin the next GCD slot. 4s or less left: before everything.\nOther mobs: only when BT / WW are up but short of rage.\nWith Nampower, everyone's Sunders are tracked.")
-  MakeCheck("SunderAny", "boss rules on all mobs", x + 176, -388,
-    function() return CFG.SUNDER_ANY end,
-    function(on) CFG.SUNDER_ANY = on end,
-    "On: the boss Sunder rules on every target\n(use it on a training dummy).\nOff: bosses only; other mobs get opportunity Sunders.")
-
-  MakeCheck("SunderBuild", "build: no Slam", x + 176, -412,
-    function() return CFG.SUNDER_BUILD_GCD end,
-    function(on) CFG.SUNDER_BUILD_GCD = on end,
-    "Boss rules, under 5 Sunders (after the opener):\nno Slam, GCDs back to back: Battle Shout if due,\nBT / WW when ready, Sunder in the other slots.")
-  MakeCheck("Shout", "Keep Battle Shout up", x - 4, -412,
+    "Bosses: build to 5 stacks first (no Slam meanwhile, see\nAdvanced), refresh at 8s left, before everything at 4s.\nOther mobs: only when BT / WW are up but short of rage.\nWith Nampower, everyone's Sunders are tracked.")
+  MakeCheck("Shout", "Keep Battle Shout up", C2 - 4, y - 44,
     function() return CFG.USE_SHOUT end,
     function(on) CFG.USE_SHOUT = on end,
     "Battle Shout is the first GCD ability when it's missing\nor has 10s or less left (both buttons).")
-
-  MakeCheck("PvP", "PvP: only Slam + BT / MS / WW", x - 4, -464,
+  MakeCheck("Opener", "Boss opener: Shout + Sunder", C2 - 4, y - 68,
+    function() return CFG.OPENER end,
+    function(on) CFG.OPENER = on end,
+    "Between the 1st and 2nd auto of a boss fight, no Slam:\nthe GCDs go to Battle Shout (if 60s or less left),\nthen Sunder Armor.")
+  MakeCheck("PvP", "PvP: only Slam + BT / MS / WW", C2 - 4, y - 92,
     function() return CFG.PVP_BASIC end,
     function(on) CFG.PVP_BASIC = on end,
     "In a battleground, or when your target is an enemy player:\nno Battle Shout, no Sunder, no opener. Just Slam, Bloodthirst /\nMortal Strike, Whirlwind and the Heroic Strike / Cleave dump.")
 
-  MakeCheck("Juju", "Juju Flurry after Death Wish", x - 4, -492,
-    function() return CFG.DW_JUJU end,
-    function(on) CFG.DW_JUJU = on end,
-    "After a Death Wish armed with /run WarSlamDW(), the next\nWarSlam press past the delay uses a Juju Flurry from your\nbags on you. Skipped if you have none. It can't be used\nduring a Slam cast, so it may come a little after the delay.")
-  MakeSlider("JujuDelay", "Juju Flurry delay after Death Wish (s)", 5, 15, 1, "%d", x, -540,
-    function() return CFG.DW_JUJU_DELAY end,
-    function(v) CFG.DW_JUJU_DELAY = v end)
-
-  MakeCheck("Debug", "Debug to chat", x - 4, -440,
-    function() return CFG.DEBUG end,
-    function(on) CFG.DEBUG = on end)
-
-  MakeCheck("Log", "Log to file", x + 130, -440,
-    function() return WarSlamLog and WarSlamLog.enabled end,
-    function(on) if WarSlamLog then WarSlamLog.enabled = on end end,
-    "Written to WTF\\Account\\<account>\\SavedVariables\\WarSlam.lua\non /reload or logout.")
-
   ----------------------------------------------------------------------
-  -- Nampower column
+  -- Tab 2: Advanced (set once)
   ----------------------------------------------------------------------
-  local nx = 315
-  local npTitle = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  npTitle:SetPoint("TOPLEFT", frame, "TOPLEFT", nx - 4, -42)
-  npTitle:SetText("Nampower")
-  local npStatus = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  npStatus:SetPoint("LEFT", npTitle, "RIGHT", 8, 0)
+  cur = pages[2]
+  y = TOP
+  Head(C1, y, "Timing")
+  MakeSlider("GcdSlack", "GCD slack (s, slow weapons only)", 0, 0.50, 0.05, "%.2f", C1, y - 26,
+    function() return CFG.GCD_SLACK end,
+    function(v) CFG.GCD_SLACK = v end,
+    "How far a GCD may run into the next Slam window.\nFast weapons always use 0. Keep it at 0.")
+  MakeSlider("CastLock", "Double-press lock (s)", 0, 1.00, 0.05, "%.2f", C1, y - 74,
+    function() return CFG.CAST_LOCK end,
+    function(v) CFG.CAST_LOCK = v end)
+
+  y = y - 108
+  Head(C1, y, "BT + WW pair")
+  MakeSlider("PairRage", "Rage leeway", 0, 40, 5, "%d", C1, y - 26,
+    function() return CFG.PAIR_RAGE end,
+    function(v) CFG.PAIR_RAGE = v end,
+    "How much rage short of both costs a pair may start,\ncounting on the auto in between (capped by what your\nautos really bring, 0 with Heroic Strike queued).")
+  MakeSlider("PairHs", "Heroic Strike when a pair is near", 60, 100, 5, "%d", C1, y - 74,
+    function() return CFG.PAIR_HS_AT end,
+    function(v) CFG.PAIR_HS_AT = v end,
+    "When BT and WW come off cooldown within 3s, Heroic\nStrike needs this much rage instead of the usual\nthreshold, so its rage goes to the pair.")
+
+  y = y - 108
+  Head(C1, y, "Sunder & opener")
+  MakeCheck("SunderBuild", "Sunder build: no Slam", C1 - 4, y - 20,
+    function() return CFG.SUNDER_BUILD_GCD end,
+    function(on) CFG.SUNDER_BUILD_GCD = on end,
+    "Bosses, under 5 Sunders (after the opener): no Slam,\nGCDs back to back: Battle Shout if due, BT / WW when\nready, Sunder in the other slots.")
+  MakeCheck("SunderAny", "Boss Sunder rules on all mobs", C1 - 4, y - 44,
+    function() return CFG.SUNDER_ANY end,
+    function(on) CFG.SUNDER_ANY = on end,
+    "On: the boss Sunder rules on every target\n(use it on a training dummy).\nOff: bosses only; other mobs get opportunity Sunders.")
+  MakeCheck("OpenerAny", "Opener on every fight", C1 - 4, y - 68,
+    function() return CFG.OPENER_ANY end,
+    function(on) CFG.OPENER_ANY = on end,
+    "Off: only against skull-level (boss) targets.\nTurn on to test the opener on a training dummy.")
+
+  -- right column: Nampower
+  y = TOP
+  local npTitle = Head(C2, y, "Nampower")
+  local npStatus = Label(C2 + 74, y - 2, "GameFontHighlightSmall")
 
   local npWidgets = {}
   local function NPW(w) table.insert(npWidgets, w); return w end
 
-  NPW(MakeCheck("UseNP", "Use Nampower queuing", nx - 4, -60,
+  NPW(MakeCheck("UseNP", "Use Nampower queuing", C2 - 4, y - 20,
     function() return CFG.USE_NAMPOWER end,
     function(on) CFG.USE_NAMPOWER = on end,
     "WarSlam sends the next spell just before the current\nSlam cast or GCD ends, so Nampower queues it."))
-
-  NPW(MakeSlider("NpLead", "WarSlam queue lead (s)", 0.05, 2.00, 0.05, "%.2f", nx, -110,
+  NPW(MakeSlider("NpLead", "WarSlam queue lead (s)", 0.05, 2.00, 0.05, "%.2f", C2, y - 64,
     function() return CFG.NP_LEAD end,
     function(v) CFG.NP_LEAD = v end))
-
-  NPW(MakeSlider("NpWindow", "Nampower queue window (ms)", 100, 2000, 50, "%d", nx, -160,
+  NPW(MakeSlider("NpWindow", "Nampower queue window (ms)", 100, 2000, 50, "%d", C2, y - 112,
     function() return tonumber(GetNP("NP_SpellQueueWindowMs")) or 500 end,
     function(v) SetNP("NP_SpellQueueWindowMs", v) end))
 
-  local function NPCheck(key, cvar, label, y, tip)
-    return NPW(MakeCheck(key, label, nx - 4, y,
+  local function NPCheck(key, cvar, label, yy, tip)
+    return NPW(MakeCheck(key, label, C2 - 4, yy,
       function() return GetNP(cvar) == "1" end,
       function(on) SetNP(cvar, on and 1 or 0) end, tip))
   end
-  NPCheck("NpCast", "NP_QueueCastTimeSpells", "Queue cast-time spells (Slam)", -192)
-  NPCheck("NpInstant", "NP_QueueInstantSpells", "Queue instant spells (BT / MS / WW)", -216)
-  NPCheck("NpCooldown", "NP_QueueSpellsOnCooldown", "Queue spells coming off cooldown", -240)
-  NPCheck("NpSwing", "NP_QueueOnSwingSpells", "Queue on-swing spells (HS / Cleave)", -264,
+  NPCheck("NpCast", "NP_QueueCastTimeSpells", "Queue cast-time spells (Slam)", y - 142)
+  NPCheck("NpInstant", "NP_QueueInstantSpells", "Queue instant spells (BT / MS / WW)", y - 166)
+  NPCheck("NpCooldown", "NP_QueueSpellsOnCooldown", "Queue spells coming off cooldown", y - 190)
+  NPCheck("NpSwing", "NP_QueueOnSwingSpells", "Queue on-swing spells (HS / Cleave)", y - 214,
     "Leave off: WarSlam already queues Heroic Strike / Cleave\nonce per swing.")
 
-  local rec = CreateFrame("Button", "WarSlamUINpRecommended", frame, "UIPanelButtonTemplate")
-  rec:SetWidth(150)
-  rec:SetHeight(22)
-  rec:SetPoint("TOPLEFT", frame, "TOPLEFT", nx, -300)
-  rec:SetText("Recommended")
-  rec:SetScript("OnClick", function()
-    for k, v in pairs(NP_RECOMMENDED) do SetNP(k, v) end
-    CFG.USE_NAMPOWER = true
-    Save()
-    frame.RefreshAll()
-    Print("Nampower set to recommended values")
-  end)
-  rec:SetScript("OnEnter", function()
-    GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Cast-time, instant and off-cooldown queuing on,\non-swing queuing off, queue window 300 ms.\nThese are Nampower settings: they apply to all\nyour spells, not only WarSlam.", 1, 1, 1, 1, 1)
-    GameTooltip:Show()
-  end)
-  rec:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-  local npNote = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  npNote:SetPoint("TOPLEFT", frame, "TOPLEFT", nx, -332)
-  npNote:SetWidth(240)
-  npNote:SetJustifyH("LEFT")
-  npNote:SetText("Nampower settings are saved by the game and apply to all your spells.")
+  local rec = MakeButton("WarSlamUINpRecommended", "Recommended", C2, y - 246, 150,
+    function()
+      for k, v in pairs(NP_RECOMMENDED) do SetNP(k, v) end
+      CFG.USE_NAMPOWER = true
+      Save()
+      frame.RefreshAll()
+      Print("Nampower set to recommended values")
+    end,
+    "Cast-time, instant and off-cooldown queuing on,\non-swing queuing off, queue window 300 ms.\nThese are Nampower settings: they apply to all\nyour spells, not only WarSlam.")
+  local npNote = Label(C2, y - 276, "GameFontDisableSmall", 240)
+  npNote:SetText("Nampower settings are saved by the game, apply to all your spells, and aren't part of profiles.")
 
   frame.RefreshNP = function()
     local inst = NPInstalled()
@@ -567,80 +653,13 @@ local function Build()
   end
 
   ----------------------------------------------------------------------
-  -- Strike test
+  -- Tab 3: Profiles & Tools
   ----------------------------------------------------------------------
-  local testTitle = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  testTitle:SetPoint("TOPLEFT", frame, "TOPLEFT", nx - 4, -362)
-  testTitle:SetText("Strike test")
-
-  local testBtn = CreateFrame("Button", "WarSlamUITest", frame, "UIPanelButtonTemplate")
-  testBtn:SetWidth(150)
-  testBtn:SetHeight(22)
-  testBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", nx, -380)
-  testBtn:SetScript("OnClick", function()
-    if WarSlamTest.running() then WarSlamTest.finish() else WarSlamTest.start(60) end
-    frame.RefreshAll()
-  end)
-  testBtn:SetScript("OnEnter", function()
-    GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Counts Slam + Bloodthirst / Mortal Strike + Whirlwind\nfor 60s from your first strike, with your current\nsettings. /warslam results shows past tests.", 1, 1, 1, 1, 1)
-    GameTooltip:Show()
-  end)
-  testBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-  ----------------------------------------------------------------------
-  -- Opener
-  ----------------------------------------------------------------------
-  MakeCheck("Opener", "Opener: Shout + Sunder before 2nd auto", nx - 4, -412,
-    function() return CFG.OPENER end,
-    function(on) CFG.OPENER = on end,
-    "Between the 1st and 2nd auto of a fight, no Slam:\nthe GCDs go to Battle Shout (if 60s or less left),\nthen Sunder Armor (to 5 stacks), then BT / WW.")
-  MakeCheck("OpenerAny", "...on every fight (not only bosses)", nx - 4, -436,
-    function() return CFG.OPENER_ANY end,
-    function(on) CFG.OPENER_ANY = on end,
-    "Off: only against skull-level (boss) targets.\nTurn on to test the opener on a training dummy.")
-  local slowTitle = Label(nx, -466, "GameFontNormalSmall")
-  slowTitle:SetText("Slow weapon rotation")
-  local slowStatus = Label(nx + 125, -466, "GameFontHighlightSmall", 150)
-  MakeDropdown("Slow", nx, -480, 150, {
-      { value = "auto", text = "Auto (weapon speed)" },
-      { value = "yes",  text = "Yes: Slam + GCD" },
-      { value = "no",   text = "No: trade a Slam" },
-    },
-    function() return CFG.SLOW_WEAPON end,
-    function(v) CFG.SLOW_WEAPON = v; Save() end)
-  -- fast weapons: BT + WW pair
-  MakeSlider("PairRage", "BT + WW pair: rage leeway", 0, 40, 5, "%d", nx, -530,
-    function() return CFG.PAIR_RAGE end,
-    function(v) CFG.PAIR_RAGE = v end)
-  MakeCheck("Pair", "Fast weapon: fire BT + WW together", nx - 4, -560,
-    function() return CFG.PAIR_STRIKES end,
-    function(on) CFG.PAIR_STRIKES = on end,
-    "Fast weapons only: when Bloodthirst / Mortal Strike and\nWhirlwind are both up and affordable, fire both:\nSlam, BT, auto, WW (instead of the Slam), auto, Slam.\nThe slider above: how much rage short of both costs\nit may start (0 = both affordable now; the auto in\nbetween usually brings ~15-25).")
-  MakeSlider("PairHs", "Heroic Strike when a pair is near", 60, 100, 5, "%d", nx, -610,
-    function() return CFG.PAIR_HS_AT end,
-    function(v) CFG.PAIR_HS_AT = v end)
-
-  frame.RefreshSlow = function()
-    local sp = WarSlamWeapon()
-    local slow = WarSlamSlowWeapon()
-    slowStatus:SetText(string.format("weapon %s: %s", sp and string.format("%.2f", sp) or "?",
-      slow and "|cff20ff20slow|r" or "|cffffd000fast|r"))
-  end
-
-  ----------------------------------------------------------------------
-  -- Profiles
-  ----------------------------------------------------------------------
-  local px = 600
-  local pTitle = Label(px - 4, -42, "GameFontNormal")
-  pTitle:SetText("Profiles")
-  local pWeapon = Label(px, -62, "GameFontHighlightSmall", 260)
-  local pLinked = Label(px, -78, "GameFontHighlightSmall", 260)
-  local pActive = Label(px, -94, "GameFontHighlightSmall", 260)
-
-  local pListLabel = Label(px, -118, "GameFontNormalSmall")
-  pListLabel:SetText("Saved profiles")
-  MakeDropdown("Profile", px, -130, 160,
+  cur = pages[3]
+  y = TOP
+  Head(C1, y, "Profiles")
+  Label(C1, y - 22, "GameFontNormalSmall"):SetText("Saved profiles")
+  MakeDropdown("Profile", C1, y - 34, 160,
     function()
       local list = {}
       local names = ProfileNames()
@@ -651,18 +670,17 @@ local function Build()
     function() return selectedProfile or "__none" end,
     function(v) if v ~= "__none" then selectedProfile = v end end)
 
-  MakeButton("WarSlamUIProfLoad", "Load", px, -166, 80,
-    function() WarSlamProfileLoad(selectedProfile) end,
+  MakeButton("WarSlamUIProfLoad", "Load", C1, y - 70, 80,
+    function() WarSlamProfileLoad(selectedProfile); frame.RefreshAll() end,
     "Load the selected profile into the settings.")
-  MakeButton("WarSlamUIProfDelete", "Delete", px + 88, -166, 80,
+  MakeButton("WarSlamUIProfDelete", "Delete", C1 + 88, y - 70, 80,
     function() WarSlamProfileDelete(selectedProfile); frame.RefreshAll() end)
 
-  local pNameLabel = Label(px, -198, "GameFontNormalSmall")
-  pNameLabel:SetText("Save current settings as")
-  local nameBox = CreateFrame("EditBox", "WarSlamUIProfileName", frame, "InputBoxTemplate")
+  Label(C1, y - 102, "GameFontNormalSmall"):SetText("Save current settings as")
+  local nameBox = CreateFrame("EditBox", "WarSlamUIProfileName", cur, "InputBoxTemplate")
   nameBox:SetWidth(160)
   nameBox:SetHeight(20)
-  nameBox:SetPoint("TOPLEFT", frame, "TOPLEFT", px + 6, -212)
+  nameBox:SetPoint("TOPLEFT", cur, "TOPLEFT", C1 + 6, y - 116)
   nameBox:SetAutoFocus(false)
   nameBox:SetMaxLetters(24)
   local function SaveFromBox()
@@ -678,64 +696,67 @@ local function Build()
   end
   nameBox:SetScript("OnEnterPressed", SaveFromBox)
   nameBox:SetScript("OnEscapePressed", function() this:ClearFocus() end)
-  MakeButton("WarSlamUIProfSave", "Save", px + 176, -211, 70, SaveFromBox,
+  MakeButton("WarSlamUIProfSave", "Save", C1 + 176, y - 115, 70, SaveFromBox,
     "Save all current settings under this name.\nSaving under an existing name updates it.")
 
-  MakeButton("WarSlamUIProfLink", "Link to this weapon", px, -248, 150,
+  MakeButton("WarSlamUIProfLink", "Link to this weapon", C1, y - 152, 150,
     function() WarSlamProfileLink(selectedProfile); frame.RefreshAll() end,
     "Link the selected profile to the main hand you have\nequipped now. Equipping it later loads the profile.")
-  MakeButton("WarSlamUIProfUnlink", "Unlink", px + 158, -248, 80,
+  MakeButton("WarSlamUIProfUnlink", "Unlink", C1 + 158, y - 152, 80,
     function() WarSlamProfileUnlink(); frame.RefreshAll() end)
 
-  local pNote = Label(px, -284, "GameFontDisableSmall", 250)
-  pNote:SetText("Equipping a linked weapon loads its profile automatically. An unlinked weapon uses the Base profile of its speed (3.40 / 3.50 / 3.60 / 3.80) if there is one. Nampower settings are not part of profiles.")
+  local pNote = Label(C1, y - 186, "GameFontDisableSmall", 250)
+  pNote:SetText("Equipping a linked weapon loads its profile. An unlinked weapon uses the Base profile of its speed (3.40 / 3.50 / 3.60 / 3.80) if there is one.")
 
-  frame.RefreshProfiles = function()
-    local sp, wname, wid = WarSlamWeapon()
-    pWeapon:SetText("Weapon: |cffffffff" .. tostring(wname or "none") .. "|r" ..
-      (sp and string.format(" (%.2f)", sp) or ""))
-    local linked = wid and WarSlamSettings.weapons[wid]
-    local base = not linked and BaseProfileFor(sp)
-    pLinked:SetText("Linked profile: " .. (linked and ("|cff20ff20" .. linked .. "|r")
-      or (base and ("|cffffd000" .. base .. "|r (by speed)")) or "|cff888888none|r"))
-    pActive:SetText("Active profile: " .. (WarSlamSettings.active and ("|cffffffff" .. WarSlamSettings.active .. "|r") or "|cff888888none|r"))
-  end
+  -- right column: test, logs, minimap
+  y = TOP
+  Head(C2, y, "Strike test")
+  local testBtn = MakeButton("WarSlamUITest", "Start 60s test", C2, y - 22, 150,
+    function()
+      if WarSlamTest.running() then WarSlamTest.finish() else WarSlamTest.start(60) end
+      frame.RefreshAll()
+    end,
+    "Counts Slam + Bloodthirst / Mortal Strike + Whirlwind\nfor 60s from your first strike, with your current\nsettings. /warslam results shows past tests.")
 
-  -- Defaults button
+  y = y - 60
+  Head(C2, y, "Logs")
+  MakeCheck("Log", "Log to file", C2 - 4, y - 20,
+    function() return WarSlamLog and WarSlamLog.enabled end,
+    function(on) if WarSlamLog then WarSlamLog.enabled = on end end,
+    "Written to WTF\\Account\\<account>\\SavedVariables\\WarSlam.lua\non /reload or logout.")
+  MakeCheck("Debug", "Debug to chat", C2 - 4, y - 44,
+    function() return CFG.DEBUG end,
+    function(on) CFG.DEBUG = on end)
+  local memText = Label(C2, y - 74, "GameFontHighlightSmall", 250)
+  frame.RefreshMem = function() memText:SetText(WarSlamMemInfo and WarSlamMemInfo() or "") end
+  MakeButton("WarSlamUIClear", "Clear logs", C2, y - 108, 100,
+    function()
+      if WarSlamClearLogs then WarSlamClearLogs() end
+      frame.RefreshMem()
+    end,
+    "Empties the decision log and the proc list.\nStrike test results are kept.\nThe file shrinks at your next /reload or logout.")
+
+  y = y - 146
+  Head(C2, y, "Minimap")
+  MakeCheck("Minimap", "Show the minimap button", C2 - 4, y - 20,
+    function() return CFG.MINIMAP_SHOW end,
+    function(on)
+      if (on and true or false) ~= (CFG.MINIMAP_SHOW and true or false) and WarSlamUI_ToggleMinimap then
+        WarSlamUI_ToggleMinimap()
+      end
+    end,
+    "Also: /warslam minimap")
+
+  ----------------------------------------------------------------------
+  -- Bottom, on every tab: defaults
+  ----------------------------------------------------------------------
+  cur = frame
   local reset = CreateFrame("Button", "WarSlamUIReset", frame, "UIPanelButtonTemplate")
   reset:SetWidth(100)
   reset:SetHeight(22)
   reset:SetPoint("BOTTOM", frame, "BOTTOM", 0, 18)
-
-  -- Clear logs + memory line
-  local memText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  memText:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 24, 48)
-  memText:SetWidth(530)
-  memText:SetJustifyH("LEFT")
-  frame.RefreshMem = function() memText:SetText(WarSlamMemInfo and WarSlamMemInfo() or "") end
-
-  local clear = CreateFrame("Button", "WarSlamUIClear", frame, "UIPanelButtonTemplate")
-  clear:SetWidth(100)
-  clear:SetHeight(22)
-  clear:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 24, 18)
-  clear:SetText("Clear logs")
-  clear:SetScript("OnClick", function()
-    if WarSlamClearLogs then WarSlamClearLogs() end
-    frame.RefreshMem()
-  end)
-  clear:SetScript("OnEnter", function()
-    GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Empties the decision log and the proc list.\nStrike test results are kept.\nThe file shrinks at your next /reload or logout.", 1, 1, 1, 1, 1)
-    GameTooltip:Show()
-  end)
-  clear:SetScript("OnLeave", function() GameTooltip:Hide() end)
   reset:SetText("Defaults")
-  reset:SetScript("OnEnter", function()
-    GameTooltip:SetOwner(this, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Resets WarSlam's own settings.\nNampower settings are not changed.", 1, 1, 1, 1, 1)
-    GameTooltip:Show()
-  end)
-  reset:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  Tip(reset, "Resets WarSlam's own settings.\nNampower settings are not changed.")
   reset:SetScript("OnClick", function()
     Apply(DEFAULTS, PROFILE_KEYS)   -- the minimap button stays where it is
     Save()
@@ -747,11 +768,10 @@ local function Build()
   frame.RefreshAll = function()
     for i = 1, table.getn(widgets) do widgets[i].Refresh() end
     frame.RefreshNP()
-    if frame.RefreshMem then frame.RefreshMem() end
-    if frame.RefreshSlow then frame.RefreshSlow() end
-    if frame.RefreshHsCost then frame.RefreshHsCost() end
-    if frame.RefreshAuto then frame.RefreshAuto() end
-    if frame.RefreshProfiles then frame.RefreshProfiles() end
+    frame.RefreshMem()
+    frame.RefreshHeader()
+    frame.RefreshHsCost()
+    frame.RefreshAuto()
     if WarSlamTest.running() then testBtn:SetText("Stop test") else testBtn:SetText("Start 60s test") end
     -- grey out the slider while Auto is on
     if CFG.SLAM_FRAC == "auto" then
@@ -762,6 +782,8 @@ local function Build()
       slamSlider:SetAlpha(1)
     end
   end
+
+  ShowTab(currentTab)
 end
 
 function WarSlamUI_Toggle()

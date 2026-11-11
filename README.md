@@ -378,33 +378,50 @@ who cast it.
 
 Click the **Slam icon on your minimap**, or type `/warslam config`, to open the
 settings window. Drag the icon to move it around the minimap. Right-click it
-to show the status. `/warslam minimap` hides or shows it. Changes apply straight
-away and are saved between sessions.
+to show the status. Changes apply straight away and are saved between
+sessions.
+
+The top of the window always shows the **active profile** (and whether it's
+linked to your weapon) and your **weapon**, with the rotation it gets (fast
+or slow). Below that, three tabs:
+
+**Rotation**: what you change per weapon or per fight.
 
 | Setting | What it does | Default |
 |---|---|---|
 | Slam window | Fraction of the swing that must be left to start Slam. Higher = Slam never delays the auto but fewer GCDs fit; lower = more GCDs but late Slams can push the auto back a little. | 0.60 |
 | Auto (Slam window) | **Base Slam cast ÷ base weapon speed**, rounded down to 0.05. The base cast comes from your Improved Slam points (0 = 2.5s, 1 = 2.2s, 2 = 2.0s), the weapon speed from its tooltip. Haste shortens Slam and your swing alike, so this ratio doesn't change with haste and no Slam is needed to know it (2.5 / 3.6 = 0.694 → 0.65). Rounding down lets Slam start a touch later: it clips the auto very slightly, for more room for GCDs. Your real Slams are still measured as a check, and `/warslam` warns you if they disagree with the formula. If the weapon speed can't be read, the last real Slam is used instead. | off |
-| GCD slack | Lets a GCD ability run into the next Slam window by this many seconds. Keep at 0 unless you want more GCDs at the cost of some Slams. | 0 |
-| Double-press lock | After sending Slam or a GCD ability, ignores presses until the game confirms the cast (or this many seconds pass). | 0.50 |
 | Heroic Strike at rage | Single target rage dump threshold. | 71 |
 | Cleave at rage | Multi target rage dump threshold. | 50 |
 | Heroic Strike cost | Shown, not set: read from your talents (15, minus 1 per Improved Heroic Strike point, so 12 at 3/3). | auto |
-| Sunder Armor in single target | Builds Sunder to 5 stacks as the first GCD ability, refreshes it in a GCD slot with 8s or less left, and before everything with 4s or less (see *Sunder Armor*). | off |
-| Use Nampower queuing | Queue the next spell through Nampower (only if installed). | on |
-| WarSlam queue lead | How early WarSlam may queue before a cast or GCD ends (up to 2s; also capped by Nampower's queue window). Longer = the choice is made earlier, right after the last cast. | 0.30s |
-| build: no Slam | Boss, under 5 Sunders: no Slam, chain Battle Shout / BT / WW / Sunder GCDs. | on |
-| boss rules on all mobs | Full Sunder rules on every target instead of bosses only (for dummy tests). Off: other mobs get opportunity Sunders. | off |
-| Opener: Shout + Sunder before 2nd auto | See *Boss opener* above. | on |
-| ...on every fight | Use the opener on every pull, not only against bosses. | off |
+| Juju Flurry after Death Wish | After `/run WarSlamDW()`, use a Juju Flurry from your bags (see *Death Wish*). | on |
+| Juju Flurry delay | Seconds between Death Wish and the Juju Flurry (5–15). | 9 |
 | Slow weapon rotation | Auto / Yes / No: whether trading a Slam for two strikes is allowed (see *Fast swings*). | Auto |
-| PvP: only Slam + BT / MS / WW | In battlegrounds or against enemy players: no Battle Shout, Sunder or opener. | on |
+| Fire BT + WW together | Fast weapons: fire both strikes for one Slam (see *Fast swings*). | on |
+| Sunder Armor | Bosses: build to 5 stacks, refresh at 8s, before everything at 4s. Other mobs: opportunity Sunders only (see *Sunder Armor*). | off |
 | Keep Battle Shout up | Battle Shout is the first GCD ability (both buttons) when it's missing or has 10s or less left. Change the 10s with `/run WarSlamConfig.SHOUT_REFRESH=15`. | on |
-| Debug to chat | Prints every decision in your chat window. | off |
-| Log to file | Writes every decision to the log file (see below). | off |
+| Boss opener | Battle Shout and Sunder before the 2nd auto (see *Boss opener*). | on |
+| PvP: only Slam + BT / MS / WW | In battlegrounds or against enemy players: no Battle Shout, Sunder or opener. | on |
 
-**Defaults** puts WarSlam's settings back to the values above. It doesn't
-change Nampower's settings.
+**Advanced**: set once.
+
+| Setting | What it does | Default |
+|---|---|---|
+| GCD slack | Lets a GCD ability run into the next Slam window by this many seconds. Slow weapons only; fast weapons always use 0. Keep at 0. | 0 |
+| Double-press lock | After sending Slam or a GCD ability, ignores presses until the game confirms the cast (or this many seconds pass). | 0.50 |
+| BT + WW pair: rage leeway | How much rage short of both costs a pair may start, counting on the auto in between. | 0 |
+| Heroic Strike when a pair is near | Rage Heroic Strike needs while BT and WW come off cooldown within 3s. | 90 |
+| Sunder build: no Slam | Bosses, under 5 Sunders: no Slam, chain Battle Shout / BT / WW / Sunder GCDs. | on |
+| Boss Sunder rules on all mobs | Full Sunder rules on every target instead of bosses only (for dummy tests). | off |
+| Opener on every fight | Use the opener on every pull, not only against bosses. | off |
+| Nampower | Use Nampower queuing, WarSlam queue lead (how early WarSlam may queue before a cast or GCD ends), Nampower's own queue settings, and a **Recommended** button. Greyed out when Nampower isn't installed. | on, 0.30s |
+
+**Profiles & Tools**: profiles and weapon links (see *Profiles*), the 60s
+strike test, **Log to file**, **Debug to chat**, the log size with **Clear
+logs**, and **Show the minimap button** (also `/warslam minimap`).
+
+**Defaults**, at the bottom of every tab, puts WarSlam's settings back to the
+values above. It doesn't change Nampower's settings.
 
 
 ## Commands

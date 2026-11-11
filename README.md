@@ -309,12 +309,13 @@ for the end of the cast and takes that swing's Slam. Instead, press
 - It disarms itself once Death Wish has really gone off (its cooldown
   started), so a failed cast stays armed. Press the macro again to cancel.
 - If Death Wish is on cooldown, the macro says so and doesn't arm.
-- **10 seconds after Death Wish**, the next WarSlam press uses a
-  **Juju Flurry** from your bags on yourself. Items are off the GCD, so this
+- **9 seconds after Death Wish** (by default), the next WarSlam press uses a
+  **Juju Flurry** from your bags on yourself. It can't be used during a Slam
+  cast, so it often lands a little after the delay: that's why the default
+  is 9 rather than 10. Set the delay with the **Juju Flurry delay** slider,
+  or untick **Juju Flurry after Death Wish**, in the settings window. Items are off the GCD, so this
   costs nothing. No Juju in your bags: the arm message tells you, and
-  WarSlam simply skips it. Turn it off with
-  `/run WarSlamConfig.DW_JUJU=false`, change the delay with
-  `/run WarSlamConfig.DW_JUJU_DELAY=8`.
+  WarSlam simply skips it.
 
 ## Sunder Armor (optional)
 
@@ -858,8 +859,8 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `TRADE_RAGE` | 10 | `/run` | At most this much rage counted from the auto in between, capped by the cautious measured rage per auto, and 0 when a Heroic Strike is queued (it replaces that auto). |
 | `PAIR_STRIKES` | on | window | Fast weapons: when BT/MS and WW are both up and affordable, fire both (Slam, BT, auto, WW instead of the Slam, auto, Slam). |
 | `PAIR_RAGE` | 0 | window | How much rage short of both costs the pair may start (0 = both affordable now). Capped by the measured rage per auto, and 0 when a Heroic Strike is queued. |
-| `DW_JUJU` | on | `/run` | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
-| `DW_JUJU_DELAY` | 10 | `/run` | Seconds between Death Wish and the Juju Flurry. |
+| `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
+| `DW_JUJU_DELAY` | 9 | window | Seconds between Death Wish and the Juju Flurry (5–15). It waits for the end of a Slam cast, so it can come a little later. |
 | `PAIR_TIMEOUT` | 4 | `/run` | Forget an unfinished pair after this many seconds. |
 | `PAIR_HS_AT` | 90 | window | Fast weapons: Heroic Strike needs this much rage while a BT + WW pair is near (both strikes off cooldown within `PAIR_HS_SOON`). |
 | `PAIR_HS_SOON` | 3 | `/run` | How many seconds ahead a pair counts as "near" for the Heroic Strike threshold. |

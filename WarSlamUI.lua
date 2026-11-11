@@ -17,7 +17,7 @@ end
 -- settings that belong to a profile
 local PROFILE_KEYS = { "SLAM_FRAC", "GCD_SLACK", "CAST_LOCK", "USE_SUNDER", "USE_SHOUT",
   "OPENER", "OPENER_ANY", "SLOW_WEAPON", "PVP_BASIC", "ST_DUMP", "MT_DUMP", "USE_NAMPOWER", "NP_LEAD",
-  "PAIR_STRIKES", "PAIR_RAGE", "PAIR_HS_AT", "SUNDER_ANY", "SUNDER_BUILD_GCD" }
+  "PAIR_STRIKES", "PAIR_RAGE", "PAIR_HS_AT", "SUNDER_ANY", "SUNDER_BUILD_GCD", "DW_JUJU", "DW_JUJU_DELAY" }
 local OTHER_KEYS = { "MINIMAP_SHOW", "MINIMAP_ANGLE" }
 
 local function Get(k)
@@ -471,6 +471,14 @@ local function Build()
     function() return CFG.PVP_BASIC end,
     function(on) CFG.PVP_BASIC = on end,
     "In a battleground, or when your target is an enemy player:\nno Battle Shout, no Sunder, no opener. Just Slam, Bloodthirst /\nMortal Strike, Whirlwind and the Heroic Strike / Cleave dump.")
+
+  MakeCheck("Juju", "Juju Flurry after Death Wish", x - 4, -492,
+    function() return CFG.DW_JUJU end,
+    function(on) CFG.DW_JUJU = on end,
+    "After a Death Wish armed with /run WarSlamDW(), the next\nWarSlam press past the delay uses a Juju Flurry from your\nbags on you. Skipped if you have none. It can't be used\nduring a Slam cast, so it may come a little after the delay.")
+  MakeSlider("JujuDelay", "Juju Flurry delay after Death Wish (s)", 5, 15, 1, "%d", x, -540,
+    function() return CFG.DW_JUJU_DELAY end,
+    function(v) CFG.DW_JUJU_DELAY = v end)
 
   MakeCheck("Debug", "Debug to chat", x - 4, -440,
     function() return CFG.DEBUG end,

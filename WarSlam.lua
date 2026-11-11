@@ -76,7 +76,7 @@ local CFG = {
   PAIR_TIMEOUT   = 4,    -- forget an unfinished pair after this many seconds
   DW_COST        = 10,
   DW_JUJU        = true,  -- after an armed Death Wish, use a Juju Flurry from your bags
-  DW_JUJU_DELAY  = 10,    -- ...this many seconds after Death Wish
+  DW_JUJU_DELAY  = 9,     -- ...this many seconds after Death Wish (not usable during a Slam cast, so it can come a bit later)
   JUJU_NAME      = "Juju Flurry",
   SUNDER_BUILD_GCD = true, -- boss, under 5 Sunders: no Slam, chain BT / WW / Sunder GCDs
   SUNDER_ANY     = false, -- full Sunder priority on every target (dummy tests); off = bosses only

@@ -78,6 +78,10 @@ local CFG = {
   DW_JUJU        = true,  -- after an armed Death Wish, use a Juju Flurry from your bags
   DW_JUJU_DELAY  = 9,     -- ...this many seconds after Death Wish (not usable during a Slam cast, so it can come a bit later)
   JUJU_NAME      = "Juju Flurry",
+  USE_OVERPOWER  = true,  -- Overpower after a dodge, dancing Berserker -> Battle -> Berserker
+  OP_RAGE_LOSS   = 0,     -- rage a stance swap may throw away (above what Tactical Mastery keeps)
+  OP_COST        = 5,
+  OP_WINDOW      = 5,     -- Overpower is usable this long after the dodge
   SUNDER_BUILD_GCD = true, -- boss, under 5 Sunders: no Slam, chain BT / WW / Sunder GCDs
   SUNDER_ANY     = false, -- full Sunder priority on every target (dummy tests); off = bosses only
   PAIR_HS_AT     = 90,   -- pair coming up: Heroic Strike only at this much rage (instead of 72)
@@ -110,14 +114,14 @@ local CFG = {
 -- Per-mode behaviour
 local MODES = {
   ST = {
-    gcds       = { "Battle Shout", "Sunder Armor", "MAIN", "Whirlwind" }, -- priority order; MAIN = Bloodthirst or Mortal Strike
+    gcds       = { "Battle Shout", "Sunder Armor", "Overpower", "MAIN", "Whirlwind" }, -- priority order; MAIN = Bloodthirst or Mortal Strike
                                                        -- Sunder here while building stacks (< 5) or with
                                                        -- 8s or less left; 4s or less: urgent rule
     dump       = "Heroic Strike",
     dumpAt     = 71,  -- queue Heroic Strike at this much rage or more
   },
   MT = {
-    gcds       = { "Battle Shout", "Whirlwind", "MAIN" },
+    gcds       = { "Battle Shout", "Whirlwind", "MAIN", "Overpower" },
     dump       = "Cleave",
     dumpAt     = 50,  -- queue Cleave at this much rage or more
   },
@@ -223,6 +227,7 @@ local COST = {
   ["Cleave"]        = function() return CFG.CLEAVE_COST end,
   ["Battle Shout"]  = function() return CFG.SHOUT_COST end,
   ["Death Wish"]    = function() return CFG.DW_COST end,
+  ["Overpower"]     = function() return CFG.OP_COST end,
 }
 
 ------------------------------------------------------------------------
@@ -333,17 +338,25 @@ function WarSlamWeapon() return weapon.speed, weapon.name, weapon.id end
 -- Improved Slam points (nil until talents are readable)
 local impSlam = nil
 local impHS = nil      -- points in Improved Heroic Strike (0-3)
+local tmPoints = nil   -- points in Tactical Mastery (0-5): 5 rage kept per point on a stance swap
 local function ScanTalents()
   if type(GetNumTalentTabs) ~= "function" then return end
-  local slam, hs = 0, 0   -- talent not found: no points
+  local slam, hs, tm = 0, 0, 0   -- talent not found: no points
   for tab = 1, GetNumTalentTabs() do
     for i = 1, (GetNumTalents(tab) or 0) do
       local name, _, _, _, rank = GetTalentInfo(tab, i)
       if name == "Improved Slam" then slam = rank or 0 end
       if name == "Improved Heroic Strike" then hs = rank or 0 end
+      if name == "Tactical Mastery" then tm = rank or 0 end
     end
   end
-  impSlam, impHS = slam, hs
+  impSlam, impHS, tmPoints = slam, hs, tm
+end
+
+-- rage a stance swap keeps: 5 per Tactical Mastery point
+function WarSlamRageKept()
+  if tmPoints == nil then ScanTalents() end
+  return 5 * (tmPoints or 0), tmPoints
 end
 
 -- Heroic Strike rage cost from talents: 15, minus 1 per Improved Heroic Strike point
@@ -482,6 +495,9 @@ local lastSlam, prevSlam = 0, 0
 local lastST, swingStart = nil, 0
 local inCombat, combatSwings = false, 0   -- swings (autos / resets) since combat started
 local combatStartAt = nil
+-- Overpower: open for OP_WINDOW seconds after your target dodges
+local opUntil, opTarget = nil, nil
+local lastSwapAt = -10      -- last stance swap sent
 -- Sunder build guard: if my Sunders don't raise the visible stacks (sunder-
 -- immune target, raid debuff limit), the build phase would never end and no
 -- Slam would ever go out: give up on it for that target until combat ends
@@ -500,7 +516,7 @@ local lastRage = nil
 -- (plus Heroic Strike / Cleave and autos as extra info) over a fixed time,
 -- from the combat log. Start with /warslam test [seconds].
 ------------------------------------------------------------------------
-local STRIKES = { "Slam", "Bloodthirst", "Mortal Strike", "Whirlwind" }
+local STRIKES = { "Slam", "Bloodthirst", "Mortal Strike", "Whirlwind", "Overpower" }
 local EXTRAS  = { "Heroic Strike", "Cleave" }
 local test = nil        -- running test
 local lastLine = {}     -- [spell] = time of last counted line (Whirlwind / Cleave hit several targets)
@@ -529,9 +545,9 @@ local function TestFinish()
   local total = t.counts["Slam"] + t.counts["Bloodthirst"] + t.counts["Mortal Strike"] + t.counts["Whirlwind"]
   local perMin = dur > 0 and total * 60 / dur or 0
   local line = string.format(
-    "TEST %.0fs: %d strikes (%.1f/min) | Slam %d, BT %d, MS %d, WW %d | HS %d, Cleave %d, Sunder %d, autos %d | %s | %s",
+    "TEST %.0fs: %d strikes (%.1f/min) | Slam %d, BT %d, MS %d, WW %d, OP %d | HS %d, Cleave %d, Sunder %d, autos %d | %s | %s",
     dur, total, perMin, t.counts["Slam"], t.counts["Bloodthirst"], t.counts["Mortal Strike"],
-    t.counts["Whirlwind"], t.counts["Heroic Strike"], t.counts["Cleave"], t.sunders or 0, t.autos,
+    t.counts["Whirlwind"], t.counts["Overpower"] or 0, t.counts["Heroic Strike"], t.counts["Cleave"], t.sunders or 0, t.autos,
     t.start or "start: ?", t.settings)
   if t.procs then
     local parts = {}
@@ -818,11 +834,27 @@ f:SetScript("OnEvent", function()
   elseif event == "CHAT_MSG_COMBAT_SELF_HITS" or event == "CHAT_MSG_COMBAT_SELF_MISSES" then
     TestAutoLine()
     ProcAttackLine("auto")
+    -- "You attack. X dodges." -> Overpower window
+    if event == "CHAT_MSG_COMBAT_SELF_MISSES" and arg1 then
+      local _, _, who = string.find(arg1, "^You attack%. (.+) dodges%.$")
+      if who then
+        opUntil, opTarget = GetTime() + CFG.OP_WINDOW, who
+        if Tracing() then Dbg("OVERPOWER window: " .. who .. " dodged your auto") end
+      end
+    end
 
   elseif event == "CHAT_MSG_SPELL_SELF_BUFF" or event == "CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS" then
     if arg1 then ProcLine(arg1) end
 
   elseif event == "CHAT_MSG_SPELL_SELF_DAMAGE" then
+    -- "Your Bloodthirst was dodged by X." -> Overpower window
+    if arg1 then
+      local _, _, sp, who = string.find(arg1, "^Your (.-) was dodged by (.+)%.$")
+      if who then
+        opUntil, opTarget = GetTime() + CFG.OP_WINDOW, who
+        if Tracing() then Dbg("OVERPOWER window: " .. who .. " dodged your " .. sp) end
+      end
+    end
     if arg1 and not ProcLine(arg1) then
       TestStrikeLine(arg1)
       local _, _, spell = string.find(arg1, "^Your (.-) [hcwmfibrp][a-z]* ")
@@ -942,8 +974,88 @@ function WarSlamSunderStatus()
 end
 
 -- ready now (lead = 0) or by the time we can act (lead > 0, Nampower queue)
+------------------------------------------------------------------------
+-- Stances (Battle / Berserker) for Overpower
+------------------------------------------------------------------------
+local function StanceIndex(name)
+  if type(GetNumShapeshiftForms) ~= "function" then return nil end
+  for i = 1, (GetNumShapeshiftForms() or 0) do
+    local _, n, active = GetShapeshiftFormInfo(i)
+    if n == name then return i, active end
+  end
+  return nil
+end
+
+-- name of the stance you're in (nil if unknown)
+local function ActiveStance()
+  if type(GetNumShapeshiftForms) ~= "function" then return nil end
+  for i = 1, (GetNumShapeshiftForms() or 0) do
+    local _, n, active = GetShapeshiftFormInfo(i)
+    if active then return n end
+  end
+  return nil
+end
+
+local function StanceReady()
+  if GetTime() - lastSwapAt < 1.0 then return false end     -- 1s stance cooldown
+  return true
+end
+
+-- rage a swap would throw away right now
+local function SwapLoss(rage)
+  local loss = rage - (WarSlamRageKept())
+  if loss < 0 then loss = 0 end
+  return loss
+end
+
+local function SwapTo(name, why)
+  local i = StanceIndex(name)
+  if not i then return false end
+  CastShapeshiftForm(i)
+  lastSwapAt = GetTime()
+  if Tracing() then Dbg("STANCE: " .. name .. " (" .. why .. ")") end
+  return true
+end
+
+-- Overpower window open on your target, and Overpower off cooldown by then
+local function OPUp(now, lead)
+  if not CFG.USE_OVERPOWER or not opUntil or not Index("Overpower") then return false end
+  if opUntil - (now + (lead or 0)) < 0.2 then return false end
+  if opTarget ~= UnitName("target") then return false end
+  return CD("Overpower") <= (lead or 0) + 0.02
+end
+
 local function Ready(name, rage, lead)
+  -- stance rules: Whirlwind needs Berserker Stance, Overpower Battle Stance
+  if name == "Whirlwind" or name == "Overpower" then
+    local st = ActiveStance()
+    if st and st ~= (name == "Whirlwind" and "Berserker Stance" or "Battle Stance") then return false end
+  end
   return CD(name) <= (lead or 0) + 0.02 and rage >= COST[name]()
+end
+
+-- the GCD slot is free for Overpower: cast it in Battle Stance, or swap to
+-- Battle first (off the GCD) when the swap wastes no more than OP_RAGE_LOSS.
+-- Returns true when it did something (this press is used).
+local function TryOverpower(now, lead, rage, free, where)
+  if not OPUp(now, lead) or not inCombat then return false end
+  local st = ActiveStance()
+  if st == "Battle Stance" then
+    if Ready("Overpower", free, lead) then
+      if Tracing() then Dbg("OVERPOWER (" .. where .. ")") end
+      Cast("Overpower", lead)
+      return true
+    end
+    return false
+  end
+  if st ~= "Berserker Stance" or casting or not StanceReady() then return false end
+  local loss = SwapLoss(rage)
+  local after = rage - loss - (free < rage and (rage - free) or 0)  -- what's left for Overpower
+  if loss > CFG.OP_RAGE_LOSS or after < COST["Overpower"]() then
+    if Tracing() then Dbg(string.format("OVERPOWER skipped: swap would lose %d rage (max %d), %d left after (rage %d, free %d)", loss, CFG.OP_RAGE_LOSS, after, rage, free)) end
+    return false
+  end
+  return SwapTo("Battle Stance", string.format("Overpower in the %s, %d rage lost", where, loss))
 end
 
 ------------------------------------------------------------------------
@@ -1164,6 +1276,19 @@ local function Run(modeName)
   DWCheck(now)
   if not casting then UseJuju(now) end
 
+  -- STANCE: back to Berserker once the Overpower is done or its window closed
+  -- (off the GCD). If that would throw away more rage than OP_RAGE_LOSS, stay
+  -- in Battle and spend it first (Slam, BT, HS work there), unless WW is due.
+  if CFG.USE_OVERPOWER and inCombat and not casting and ActiveStance() == "Battle Stance"
+     and not OPUp(now, 1.0) and StanceIndex("Berserker Stance") and StanceReady() then
+    local loss = SwapLoss(rage)
+    if loss <= CFG.OP_RAGE_LOSS or (Index("Whirlwind") and CD("Whirlwind") <= 1.5) then
+      SwapTo("Berserker Stance", string.format("Overpower done, %d rage lost", loss))
+      return
+    end
+    if Tracing() then Dbg(string.format("STANCE: staying in Battle, a swap would lose %d rage", loss)) end
+  end
+
   local gcd = CD("Slam")
   if gcd == 999 then
     if Tracing() then Dbg("Slam not found in spellbook") end
@@ -1299,6 +1424,7 @@ local function Run(modeName)
       Cast("Death Wish", lead)
       return
     end
+    if TryOverpower(now, lead, rage, free, "Sunder build") then return end
     if Index("Battle Shout") and Ready("Battle Shout", free, lead) and CFG.USE_SHOUT
        and ShoutTimeLeft() - lead <= CFG.SHOUT_REFRESH then
       if Tracing() then Dbg("BUILD: Battle Shout") end
@@ -1498,6 +1624,10 @@ local function Run(modeName)
     if name == "MAIN" then name = MainStrike() end
     if name == "Sunder Armor" and (pvp or not (opener or (CFG.USE_SUNDER and SunderFull()))) then name = nil end
     if name == "Battle Shout" and pvp then name = nil end
+    if name == "Overpower" then
+      if not pvp and TryOverpower(now, lead, rage, free, "free GCD slot") then return end
+      name = nil
+    end
     if name == "Battle Shout" then
       local left = ShoutTimeLeft() - lead
       if not ((CFG.USE_SHOUT and left <= CFG.SHOUT_REFRESH) or (opener and left <= CFG.OPENER_SHOUT)) then name = nil end

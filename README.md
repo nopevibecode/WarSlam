@@ -323,6 +323,41 @@ for the end of the cast and takes that swing's Slam. Instead, press
   costs nothing. No Juju in your bags: the arm message tells you, and
   WarSlam simply skips it.
 
+## Overpower and stance dancing
+
+When your target **dodges** (an auto, Bloodthirst, Whirlwind, Slam...),
+Overpower is usable for 5 seconds, in Battle Stance. WarSlam handles the
+stance dance, starting from Berserker Stance:
+
+1. In a GCD slot that costs no Slam (or during the Sunder build), with
+   Overpower off cooldown, it **swaps to Battle Stance**. Swaps are off the
+   GCD, and never happen during a Slam cast.
+2. The next press casts **Overpower**.
+3. Then it **swaps back to Berserker Stance** (Whirlwind needs it).
+
+A swap throws away the rage above what **Tactical Mastery** keeps (5 per
+point, read from your talents). WarSlam only swaps when that loss is within
+the **Rage a swap may lose** slider (default 0, so no loss). If swapping back
+would lose rage, it stays in Battle and spends the rage first (Slam,
+Bloodthirst and Heroic Strike work there), unless Whirlwind is due. Without
+Tactical Mastery, a swap keeps no rage, so Overpower only happens when your
+rage is within the slider. In Defensive Stance, WarSlam never swaps. In PvP
+mode there's no Overpower.
+
+In the simulator, with your weapon at 6% haste and 5/5 Tactical Mastery
+(about 3 dodges per minute):
+
+| Rage per auto | Rage a swap may lose | Overpower per min | Strikes per min | Rage lost per min |
+|---|---|---|---|---|
+| 26 (dummy) | off | 0 | 22.8 | 0 |
+| 26 (dummy) | 0 | 1.3 | 23.5 | 10 |
+| 36 (raid) | off | 0 | 26.6 | 0 |
+| 36 (raid) | 0 | 0.5 | 26.8 | 8 |
+| 36 (raid) | 10 | 1.2 | 27.2 | 14 |
+| 36 (raid) | 30 | 2.0 | 27.6 | 50 (fewer Heroic Strikes) |
+
+The strike test counts Overpower with the other strikes.
+
 ## Sunder Armor (optional)
 
 When it's enabled, the full rules below apply to **bosses** (skull level or
@@ -402,6 +437,8 @@ or slow). Below that, three tabs:
 | Keep Battle Shout up | Battle Shout is the first GCD ability (both buttons) when it's missing or has 10s or less left. Change the 10s with `/run WarSlamConfig.SHOUT_REFRESH=15`. | on |
 | Boss opener | Battle Shout and Sunder before the 2nd auto (see *Boss opener*). | on |
 | PvP: only Slam + BT / MS / WW | In battlegrounds or against enemy players: no Battle Shout, Sunder or opener. | on |
+| Overpower (stance dance) | After a dodge: Battle Stance, Overpower, back to Berserker (see *Overpower and stance dancing*). | on |
+| Rage a swap may lose | Rage a stance swap may throw away above what Tactical Mastery keeps (0–30). | 0 |
 
 **Advanced**: set once.
 
@@ -882,6 +919,9 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `TRADE_RAGE` | 10 | `/run` | At most this much rage counted from the auto in between, capped by the cautious measured rage per auto, and 0 when a Heroic Strike is queued (it replaces that auto). |
 | `PAIR_STRIKES` | on | window | Fast weapons: when BT/MS and WW are both up and affordable, fire both (Slam, BT, auto, WW instead of the Slam, auto, Slam). |
 | `PAIR_RAGE` | 0 | window | How much rage short of both costs the pair may start (0 = both affordable now). Capped by the measured rage per auto, and 0 when a Heroic Strike is queued. |
+| `USE_OVERPOWER` | on | window | Overpower after a dodge, with the stance dance. |
+| `OP_RAGE_LOSS` | 0 | window | Rage a stance swap may throw away above what Tactical Mastery keeps. |
+| `OP_WINDOW` | 5 | `/run` | How long Overpower stays usable after a dodge. |
 | `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
 | `DW_JUJU_DELAY` | 9 | window | Seconds between Death Wish and the Juju Flurry (5–15). It waits for the end of a Slam cast, so it can come a little later. |
 | `PAIR_TIMEOUT` | 4 | `/run` | Forget an unfinished pair after this many seconds. |

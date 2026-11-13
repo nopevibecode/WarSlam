@@ -17,7 +17,8 @@ end
 -- settings that belong to a profile
 local PROFILE_KEYS = { "SLAM_FRAC", "GCD_SLACK", "CAST_LOCK", "USE_SUNDER", "USE_SHOUT",
   "OPENER", "OPENER_ANY", "SLOW_WEAPON", "PVP_BASIC", "ST_DUMP", "MT_DUMP", "USE_NAMPOWER", "NP_LEAD",
-  "PAIR_STRIKES", "PAIR_RAGE", "PAIR_HS_AT", "SUNDER_ANY", "SUNDER_BUILD_GCD", "DW_JUJU", "DW_JUJU_DELAY" }
+  "PAIR_STRIKES", "PAIR_RAGE", "PAIR_HS_AT", "SUNDER_ANY", "SUNDER_BUILD_GCD", "DW_JUJU", "DW_JUJU_DELAY",
+  "USE_OVERPOWER", "OP_RAGE_LOSS" }
 local OTHER_KEYS = { "MINIMAP_SHOW", "MINIMAP_ANGLE" }
 
 local function Get(k)
@@ -555,6 +556,22 @@ local function Build()
     function(on) CFG.PVP_BASIC = on end,
     "In a battleground, or when your target is an enemy player:\nno Battle Shout, no Sunder, no opener. Just Slam, Bloodthirst /\nMortal Strike, Whirlwind and the Heroic Strike / Cleave dump.")
 
+  y = y - 126
+  Head(C2, y, "Overpower")
+  MakeCheck("Overpower", "Overpower (stance dance)", C2 - 4, y - 20,
+    function() return CFG.USE_OVERPOWER end,
+    function(on) CFG.USE_OVERPOWER = on end,
+    "After your target dodges, in a GCD slot that costs no Slam\n(or during the Sunder build): swap to Battle Stance,\nOverpower, swap back to Berserker. Swaps are off the GCD.\nSkipped when a swap would lose more rage than the slider.")
+  MakeSlider("OpLoss", "Rage a swap may lose", 0, 30, 5, "%d", C2, y - 64,
+    function() return CFG.OP_RAGE_LOSS end,
+    function(v) CFG.OP_RAGE_LOSS = v end,
+    "0 = only swap when your rage fits in what Tactical\nMastery keeps (5 per point).")
+  local tmLabel = Label(C2, y - 94, "GameFontHighlightSmall", 250)
+  frame.RefreshTM = function()
+    local kept, pts = WarSlamRageKept()
+    tmLabel:SetText(string.format("Tactical Mastery %d/5: a swap keeps |cffffd000%d rage|r", pts or 0, kept))
+  end
+
   ----------------------------------------------------------------------
   -- Tab 2: Advanced (set once)
   ----------------------------------------------------------------------
@@ -771,6 +788,7 @@ local function Build()
     frame.RefreshMem()
     frame.RefreshHeader()
     frame.RefreshHsCost()
+    frame.RefreshTM()
     frame.RefreshAuto()
     if WarSlamTest.running() then testBtn:SetText("Stop test") else testBtn:SetText("Start 60s test") end
     -- grey out the slider while Auto is on

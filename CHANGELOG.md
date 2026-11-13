@@ -17,7 +17,8 @@
   button, which no longer switches off the Sunder build. Without Nampower it
   stays off by default.
 - **Overpower instead of a Slam only when it's worth it:** alone, it only
-  takes a slot that costs the next Slam if the stance swap loses no rage;
+  takes a slot that costs the next Slam if the stance swap loses 10 rage or
+  less (`OP_BLOCKED_LOSS`, capped by the rage-loss slider);
   otherwise it waits for a pair with Bloodthirst or Whirlwind (two strikes
   for the Slam).
 - **Sunder refresh in rotation holes:** a GCD slot nothing else can use (both
@@ -31,7 +32,10 @@
 - **Rend before leaving Battle Stance** ("...and Rend", Overpower section,
   on by default): after Overpower, when swapping back would lose 5 rage or
   more, Rend spends 10 of it, if its GCD costs no Slam and your last Rend is
-  (nearly) over. The settings window is a little taller to fit it.
+  (nearly) over, and never on bleed-immune targets: with Deep Wounds, a
+  target showing no Deep Wounds after 2 of your crits (or a "Rend failed ...
+  immune" line) is remembered as immune. The settings window is a little
+  taller to fit it.
 
 ## 1.1 — 2026-11-13
 

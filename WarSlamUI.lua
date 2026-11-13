@@ -596,7 +596,7 @@ local function Build()
   MakeCheck("OpBlocked", "...even if it costs the next Slam", C2 - 4, y - 44,
     function() return CFG.OP_TAKE_BLOCKED end,
     function(on) CFG.OP_TAKE_BLOCKED = on end,
-    "On: Overpower takes the next GCD slot, before BT + WW\npairs, even when that slot costs the next Slam: alone\nonly if the swap loses no rage, otherwise in a pair.\nOff: only in slots that cost no Slam, or the Sunder build.")
+    "On: Overpower takes the next GCD slot, before BT + WW\npairs, even when that slot costs the next Slam: alone\nonly if the swap loses 10 rage or less, otherwise in a pair.\nOff: only in slots that cost no Slam, or the Sunder build.")
   MakeSlider("OpLoss", "Rage a swap may lose", 0, 30, 5, "%d", C2, y - 88,
     function() return CFG.OP_RAGE_LOSS end,
     function(v) CFG.OP_RAGE_LOSS = v end,
@@ -608,7 +608,7 @@ local function Build()
   MakeCheck("OpRend", "...and Rend", C2 - 4, y - 140,
     function() return CFG.OP_REND end,
     function(on) CFG.OP_REND = on end,
-    "While staying in Battle: Rend when a swap would lose\n5 rage or more, its GCD costs no Slam, and your last\nRend is over or nearly (Rend needs Battle Stance).")
+    "While staying in Battle: Rend when a swap would lose\n5 rage or more, its GCD costs no Slam, and your last\nRend is over or nearly (Rend needs Battle Stance).\nNever on bleed-immune targets (spotted with Deep Wounds:\nno bleed after 2 of your crits).")
   local tmLabel = Label(C2 + 76, y - 2, "GameFontHighlightSmall", 200)
   frame.RefreshTM = function()
     local kept, pts = WarSlamRageKept()

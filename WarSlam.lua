@@ -94,6 +94,7 @@ local CFG = {
   AUTO_BERSERKER = true,  -- in combat in your own Battle Stance (Charge): to Berserker as soon as no rage is lost
   OP_STAY_BATTLE = true,  -- after Overpower, stay in Battle to dump the rage a swap would lose (BT / MS, Heroic Strike)
   OP_STAY_MAX    = 3,     -- ...but never longer than this many seconds
+  OP_BLOCKED_LOSS = 10,  -- Overpower alone in a slot that costs the next Slam: swap may lose at most this (and OP_RAGE_LOSS)
   OP_REND        = true,  -- ...and spend it on Rend (Battle Stance only) when it doesn't cost a Slam
   REND_MIN_LOSS  = 5,     -- ...only when a swap would lose at least this much rage (Rend costs 10)
   REND_COST      = 10,
@@ -365,18 +366,20 @@ function WarSlamWeapon() return weapon.speed, weapon.name, weapon.id end
 local impSlam = nil
 local impHS = nil      -- points in Improved Heroic Strike (0-3)
 local tmPoints = nil   -- points in Tactical Mastery (0-5): 5 rage kept per point on a stance swap
+local dwPoints = 0     -- points in Deep Wounds: its bleed after a crit shows bleed-immune targets
 local function ScanTalents()
   if type(GetNumTalentTabs) ~= "function" then return end
-  local slam, hs, tm = 0, 0, 0   -- talent not found: no points
+  local slam, hs, tm, dw = 0, 0, 0, 0   -- talent not found: no points
   for tab = 1, GetNumTalentTabs() do
     for i = 1, (GetNumTalents(tab) or 0) do
       local name, _, _, _, rank = GetTalentInfo(tab, i)
       if name == "Improved Slam" then slam = rank or 0 end
       if name == "Improved Heroic Strike" then hs = rank or 0 end
       if name == "Tactical Mastery" then tm = rank or 0 end
+      if name == "Deep Wounds" then dw = rank or 0 end
     end
   end
-  impSlam, impHS, tmPoints = slam, hs, tm
+  impSlam, impHS, tmPoints, dwPoints = slam, hs, tm, dw
 end
 
 -- rage a stance swap keeps: 5 per Tactical Mastery point
@@ -523,6 +526,55 @@ local inCombat, combatSwings = false, 0   -- swings (autos / resets) since comba
 local combatStartAt = nil
 -- Overpower: open for OP_WINDOW seconds after your target dodges
 local opUntil, opTarget = nil, nil
+-- bleed immunity per mob name (for Rend): learned from Deep Wounds not
+-- showing after your crits, or a "Your Rend failed. X is immune." line
+local bleed = {}           -- [name] = { ok = seen bleeding, miss = crits without Deep Wounds, immune = true }
+local bleedCheck = nil     -- { name, at }: look for Deep Wounds on the target at that time
+
+-- a debuff whose icon contains `tex` on the target?
+local function TargetHasDebuff(tex)
+  for i = 1, 16 do
+    local t = UnitDebuff("target", i)
+    if not t then return false end
+    if string.find(t, tex) then return true end
+  end
+  return false
+end
+
+-- one of your crits landed on `who`: with Deep Wounds, check its bleed soon
+local function BleedCrit(who)
+  if (dwPoints or 0) == 0 or who ~= UnitName("target") then return end
+  local b = bleed[who]
+  if b and (b.ok or b.immune) then return end
+  bleedCheck = { name = who, at = GetTime() + 0.8 }
+end
+
+-- is the target known to be immune to bleeds? (also runs a due Deep Wounds check)
+local function BleedImmune()
+  local name = UnitName("target")
+  if not name then return false end
+  if bleedCheck and GetTime() >= bleedCheck.at then
+    local c = bleedCheck
+    bleedCheck = nil
+    if c.name == name then
+      local b = bleed[name] or { miss = 0 }
+      bleed[name] = b
+      if TargetHasDebuff("BackStab") or TargetHasDebuff("Gouge") then   -- Deep Wounds / Rend icons
+        b.ok = true
+      elseif UnitDebuff("target", 16) then
+        -- debuff slots full: Deep Wounds may just not fit, proves nothing
+      else
+        b.miss = b.miss + 1
+        if b.miss >= 2 and not b.ok then
+          b.immune = true
+          Log("BLEED: " .. name .. " shows no Deep Wounds after 2 crits: immune to bleeds (no Rend on it)")
+        end
+      end
+    end
+  end
+  local b = bleed[name]
+  return b ~= nil and b.immune == true
+end
 
 -- Nampower tells who dodged by ID (GUID), so Overpower only opens for a dodge
 -- by your actual target (several mobs can share its name, and Whirlwind /
@@ -896,6 +948,10 @@ f:SetScript("OnEvent", function()
     end
 
   elseif event == "CHAT_MSG_COMBAT_SELF_HITS" or event == "CHAT_MSG_COMBAT_SELF_MISSES" then
+    if event == "CHAT_MSG_COMBAT_SELF_HITS" and arg1 then
+      local _, _, who = string.find(arg1, "^You crit (.+) for ")
+      if who then BleedCrit(who) end
+    end
     TestAutoLine()
     ProcAttackLine("auto")
     -- "You attack. X dodges." -> Overpower window
@@ -911,6 +967,20 @@ f:SetScript("OnEvent", function()
     if arg1 then ProcLine(arg1) end
 
   elseif event == "CHAT_MSG_SPELL_SELF_DAMAGE" then
+    if arg1 then
+      local _, _, who = string.find(arg1, "^Your .- crits (.+) for ")
+      if who then BleedCrit(who) end
+      -- "Your Rend failed. X is immune." (also Deep Wounds)
+      if string.find(arg1, "immune") and (string.find(arg1, "Rend") or string.find(arg1, "Deep Wounds")) then
+        local _, _, im = string.find(arg1, "%. (.+) is immune")
+        if not im then _, _, im = string.find(arg1, "^(.+) is immune") end
+        if im then
+          bleed[im] = bleed[im] or { miss = 0 }
+          bleed[im].immune = true
+          Log("BLEED: " .. im .. " is immune to bleeds (no Rend on it)")
+        end
+      end
+    end
     -- "Your Bloodthirst was dodged by X." -> Overpower window
     if arg1 and not npDodges then
       local _, _, sp, who = string.find(arg1, "^Your (.-) was dodged by (.+)%.$")
@@ -1571,7 +1641,8 @@ local function SwapBack(now, rage, free, dump)
   -- Rend (GCD) to spend rage the swap would lose, when it costs no Slam and
   -- your last Rend is (nearly) over
   if CFG.OP_REND and loss >= CFG.REND_MIN_LOSS and Index("Rend") and CD("Rend") <= 0.02
-     and free >= COST["Rend"]() and now - rendAt > CFG.REND_DUR - 3 and RendFits() then
+     and free >= COST["Rend"]() and now - rendAt > CFG.REND_DUR - 3 and RendFits()
+     and not BleedImmune() then
     if Tracing() then Dbg(string.format("STANCE: Rend before swapping back (a swap would lose %d)", loss)) end
     rendAt = now
     Cast("Rend", 0)
@@ -1656,6 +1727,7 @@ end
 -- Death Wish armed by the macro went off? Juju Flurry due?
 local function CooldownSteps(now)
   DWCheck(now)
+  BleedImmune()      -- runs a due Deep Wounds check while the target is still there
   if not casting then UseJuju(now) end
   -- Bloodrage (and the Enrage it procs) goes out in the second half of
   -- Death Wish: from BLOODRAGE_DW_AFTER seconds in, as soon as its rage
@@ -2048,12 +2120,13 @@ local function Run(modeName)
   end
 
   -- OVERPOWER alone in the next GCD slot, even a blocked one, when no pair
-  -- took it. A blocked slot costs the next Slam: one strike for another, so
-  -- it's only worth it (Overpower's near-certain crit) when the stance swap
-  -- loses no rage at all; with rage to lose, Overpower waits for a pair
+  -- took it. A blocked slot costs the next Slam: one strike for another.
+  -- Overpower costs 5 rage against Slam's 15 and nearly always crits, so it's
+  -- worth it while the swap loses no more than OP_BLOCKED_LOSS (10: the rage
+  -- it saves over the Slam); beyond that, Overpower waits for a pair
   if CFG.OP_TAKE_BLOCKED and not pvp and not opener and not pair and (lead == 0 or NPQueues(false))
      and R.TryOverpower(now, lead, rage, free, "next GCD slot",
-       (CFG.GCD - slack > windowEnd) and 0 or nil) then
+       (CFG.GCD - slack > windowEnd) and math.min(CFG.OP_BLOCKED_LOSS, CFG.OP_RAGE_LOSS) or nil) then
     return
   end
   -- fast weapons: no slack (set above), a GCD that ends after the next Slam

@@ -382,10 +382,11 @@ stance dance, starting from Berserker Stance:
    strikes and the swaps in between.
 2. With no pair to make, Overpower takes the **next GCD slot** on its own.
    With a fast weapon that slot usually costs the next Slam, and then
-   Overpower only goes if the stance swap loses **no rage** (or you're
-   already in Battle Stance): it's still one strike between two autos, so
-   Overpower's near-certain crit only beats the Slam when the swap is free.
-   With rage to lose, Overpower waits for a pair (two strikes instead of the
+   Overpower only goes if the stance swap loses **10 rage or less**
+   (`OP_BLOCKED_LOSS`, and never more than the rage-loss slider): it's still
+   one strike between two autos, but Overpower costs 5 rage against Slam's 15
+   and nearly always crits, and Rend can spend leftover rage before the swap
+   back. Beyond that, Overpower waits for a pair (two strikes instead of the
    Slam). Untick **...even if it costs the next Slam** to only use slots that
    cost no Slam (and the Sunder build).
 3. Swaps are off the GCD and never happen during a Slam cast: **Battle
@@ -543,10 +544,10 @@ or slow). Below that, three tabs:
 | Boss opener | Battle Shout and Sunder before the 2nd auto (see *Boss opener*). | on |
 | PvP: only Slam + BT / MS / WW | In battlegrounds or against enemy players: no Battle Shout, Sunder or opener. | on |
 | Overpower (stance dance) | After a dodge: Battle Stance, Overpower, back to Berserker (see *Overpower and stance dancing*). | on |
-| ...even if it costs the next Slam | Overpower takes the next GCD slot, before BT + WW pairs, even when that costs the next Slam: alone only if the stance swap loses no rage, otherwise in a pair. Off: only slots that cost no Slam. | on |
+| ...even if it costs the next Slam | Overpower takes the next GCD slot, before BT + WW pairs, even when that costs the next Slam: alone only if the stance swap loses 10 rage or less, otherwise in a pair. Off: only slots that cost no Slam. | on |
 | Rage a swap may lose | Rage the swap *to* Battle may throw away above what Tactical Mastery keeps (0–30). | 0 |
 | Stay in Battle to dump rage | After Overpower, stay in Battle up to 3s to dump the rage a swap would lose: Bloodthirst / MS, Rend, Heroic Strike, Slam. Off: swap back straight away. | on |
-| ...and Rend | While staying in Battle: Rend when a swap would lose 5 rage or more (`REND_MIN_LOSS`), its GCD costs no Slam (this swing's Slam done or out of reach, the next Slam window still open), and your last Rend is over or has 3s or less left. | on |
+| ...and Rend | While staying in Battle: Rend when a swap would lose 5 rage or more (`REND_MIN_LOSS`), its GCD costs no Slam (this swing's Slam done or out of reach, the next Slam window still open), your last Rend is over or has 3s or less left, and the target isn't immune to bleeds. With Deep Wounds talented, a target that shows no Deep Wounds after 2 of your crits counts as bleed-immune (unless its debuff slots are full); a "Your Rend failed. X is immune." line marks it too. | on |
 
 **Advanced**: set once.
 

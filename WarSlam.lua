@@ -57,7 +57,7 @@ local CFG = {
   SUNDER_REFRESH = 8,    -- 5 stacks with this many seconds (or fewer) left: refresh it in the next GCD slot
                          -- (first GCD ability after Battle Shout); 0 = leave it to the urgent rule below
   SUNDER_URGENT  = 4,    -- this many seconds (or fewer) left: Sunder goes before everything, Slam included
-  USE_SUNDER     = false, -- single target: include Sunder Armor in the GCD priority
+  USE_SUNDER     = true,  -- single target: include Sunder Armor in the GCD priority (bosses: full rules, other mobs: opportunity only)
   USE_SHOUT      = true,  -- keep Battle Shout up (first GCD ability when missing or running out)
 
   -- Fast weapons: when a GCD after a Slam would cost the next Slam, still take

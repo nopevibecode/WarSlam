@@ -102,7 +102,7 @@ GCD priority:
 | | Single target (`WarSlamST`) | Multi target (`WarSlamMT`) |
 |---|---|---|
 | 1 | Battle Shout if missing or 10s or less left | Battle Shout if missing or 10s or less left |
-| 2 | Sunder Armor while under 5 stacks *(optional, off by default)* | Whirlwind |
+| 2 | Sunder Armor while under 5 stacks *(optional, on by default)* | Whirlwind |
 | 3 | Bloodthirst / Mortal Strike | Bloodthirst / Mortal Strike |
 | 4 | Whirlwind | |
 | Rage dump | Heroic Strike | Cleave |
@@ -531,7 +531,7 @@ or slow). Below that, three tabs:
 | Bloodrage for pairs | Off / With Death Wish / Always: Bloodrage to complete a pair short of rage (see *Bloodrage for pairs*). | With Death Wish |
 | Slow weapon rotation | Auto / Yes / No: whether trading a Slam for two strikes is allowed (see *Fast swings*). | Auto |
 | Fire BT + WW together | Fast weapons: fire both strikes for one Slam (see *Fast swings*). | on |
-| Sunder Armor | Bosses: build to 5 stacks, refresh at 8s, before everything at 4s. Other mobs: opportunity Sunders only (see *Sunder Armor*). | off |
+| Sunder Armor | Bosses: build to 5 stacks, refresh at 8s, before everything at 4s. Other mobs: opportunity Sunders only (see *Sunder Armor*). | on |
 | Keep Battle Shout up | Battle Shout is the first GCD ability (both buttons) when it's missing or has 10s or less left. Change the 10s with `/run WarSlamConfig.SHOUT_REFRESH=15`. | on |
 | Boss opener | Battle Shout and Sunder before the 2nd auto (see *Boss opener*). | on |
 | PvP: only Slam + BT / MS / WW | In battlegrounds or against enemy players: no Battle Shout, Sunder or opener. | on |
@@ -1055,7 +1055,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 
 | Parameter | Default | Where | What it does |
 |---|---|---|---|
-| `USE_SUNDER` | off | window | Sunder in the single target rotation (§7). Also turns on tracking of other players' Sunders. |
+| `USE_SUNDER` | on | window | Sunder in the single target rotation (§7). Also turns on tracking of other players' Sunders. |
 | `SUNDER_URGENT` | 4 | `/run` | Seconds left at which Sunder goes before everything. |
 | `SUNDER_REFRESH` | 8 | `/run` | Seconds left at which a 5-stack is refreshed in the next GCD slot (0 = leave it to the urgent rule). |
 | `SUNDER_DUR` | 30 | `/run` | Sunder duration. |

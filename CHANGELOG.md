@@ -12,6 +12,9 @@
   speed (when it has a base profile) and resets that base profile if it's
   active. Before, it went back to generic values (Slam window 0.60, Heroic
   Strike at 71, pairs with no leeway).
+- **Sunder Armor on by default** (bosses: full rules, other mobs: opportunity
+  Sunders only), so the Defaults button no longer switches off the Sunder
+  build.
 
 ## 1.1 — 2026-11-13
 

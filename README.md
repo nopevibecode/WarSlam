@@ -325,10 +325,14 @@ for the end of the cast and takes that swing's Slam. Instead, press
 
 ## Overpower and stance dancing
 
-When your target **dodges** (an auto, Bloodthirst, Mortal Strike, Slam, Sunder, Heroic Strike),
-Overpower is usable for a few seconds (5 in theory, about 4 in practice on OctoWoW), in Battle Stance. Dodges of **Whirlwind and Cleave** are ignored: they
-hit several mobs, and the combat log only gives the dodger's name, so it may
-be another mob with your target's name (Overpower would then be refused). WarSlam handles the
+When your target **dodges** (an auto, or any of your strikes),
+Overpower is usable for a few seconds (5 in theory, about 4 in practice on OctoWoW), in Battle Stance. With **Nampower**, WarSlam
+checks the dodging mob's ID against your target's, so only a dodge by your
+actual target counts, even with several mobs of the same name around, and
+Whirlwind and Cleave dodges count too. Without Nampower it only has the
+combat log text (a name), so Whirlwind and Cleave dodges are ignored: they
+hit several mobs, and the one that dodged may be another mob with your
+target's name. WarSlam handles the
 stance dance, starting from Berserker Stance:
 
 1. Overpower is a strike like Bloodthirst and Whirlwind: it can replace any
@@ -943,7 +947,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `OP_TAKE_BLOCKED` | on | window | Overpower may take a slot that costs the next Slam. |
 | `OP_STAY_BATTLE` | off | window | Stay in Battle after Overpower to spend rage first. |
 | `OP_STAY_MAX` | 3 | `/run` | Longest stay in Battle when that's on. |
-| `OP_FROM_AOE` | off | `/run` | Also open the Overpower window on Whirlwind / Cleave dodges (may be another mob). |
+| `OP_FROM_AOE` | off | `/run` | Without Nampower: also open the Overpower window on Whirlwind / Cleave dodges (may be another mob). With Nampower they always count, checked by mob ID. |
 | `OP_WINDOW` | 4 | `/run` | How long after a dodge WarSlam still goes for Overpower. 5s in theory, but on OctoWoW it's refused past about 4s. If one is refused anyway, WarSlam takes the window as closed and swaps back. |
 | `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
 | `DW_JUJU_DELAY` | 9 | window | Seconds between Death Wish and the Juju Flurry (5–15). It waits for the end of a Slam cast, so it can come a little later. |

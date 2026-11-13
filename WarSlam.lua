@@ -505,35 +505,40 @@ local combatStartAt = nil
 -- Overpower: open for OP_WINDOW seconds after your target dodges
 local opUntil, opTarget = nil, nil
 
--- PROBE (temporary): learn which Nampower events say who dodged, by ID.
--- Keeps the last few of these events in memory and writes them to the log
--- only when the combat log reports a dodge.
-local PROBE_EVENTS = { "AUTO_ATTACK_SELF", "SPELL_MISS_SELF", "SPELL_DAMAGE_EVENT_SELF",
-  "SPELL_GO_SELF", "SPELL_FAILED_SELF", "SPELL_MISS" }
-local probeRing, probeN = {}, 0
-local probeAfter = 0        -- also log events arriving just after a dodge line
-local probe = CreateFrame("Frame")
-for i = 1, table.getn(PROBE_EVENTS) do pcall(probe.RegisterEvent, probe, PROBE_EVENTS[i]) end
-probe:SetScript("OnEvent", function()
-  if not (WarSlamLog and WarSlamLog.enabled) then return end
-  probeN = math.mod(probeN, 12) + 1
-  probeRing[probeN] = { t = GetTime(), s = string.format("%s | %s | %s | %s | %s | %s | %s | %s | %s | %s", event,
-    tostring(arg1), tostring(arg2), tostring(arg3), tostring(arg4), tostring(arg5),
-    tostring(arg6), tostring(arg7), tostring(arg8), tostring(arg9)) }
-  if GetTime() < probeAfter then Log("PROBE  after: " .. probeRing[probeN].s) end
-end)
-local function ProbeDump(why)
-  if not (WarSlamLog and WarSlamLog.enabled) then return end
-  local tg = "?"
-  if type(GetUnitGUID) == "function" then tg = tostring(GetUnitGUID("target")) end
-  Log("PROBE dodge: " .. why .. " | target GUID " .. tg)
-  probeAfter = GetTime() + 0.3
-  local now = GetTime()
-  for i = 1, 12 do
-    local e = probeRing[i]
-    if e and now - e.t < 0.6 then Log(string.format("PROBE  %.2fs ago: %s", now - e.t, e.s)) end
+-- Nampower tells who dodged by ID (GUID), so Overpower only opens for a dodge
+-- by your actual target (several mobs can share its name, and Whirlwind /
+-- Cleave hit several). Without Nampower, the combat log text is used.
+--   SPELL_MISS_SELF:  arg1 caster, arg2 target GUID, arg3 spell id, arg4 miss type (3 = dodge)
+--   AUTO_ATTACK_SELF: arg1 attacker, arg2 target GUID, arg3 damage, arg4 hit info, arg5 victim state (2 = dodge)
+local opTargetGuid = nil
+local npDodges = false      -- set once a Nampower combat event arrives: the text path is then skipped
+-- the Overpower window belongs to your current target
+local function OPOnTarget()
+  if opTargetGuid then
+    return type(GetUnitGUID) == "function" and GetUnitGUID("target") == opTargetGuid
   end
+  return opTarget ~= nil and opTarget == UnitName("target")
 end
+
+local npCombat = CreateFrame("Frame")
+pcall(npCombat.RegisterEvent, npCombat, "SPELL_MISS_SELF")
+pcall(npCombat.RegisterEvent, npCombat, "AUTO_ATTACK_SELF")
+npCombat:SetScript("OnEvent", function()
+  if event ~= "SPELL_MISS_SELF" and event ~= "AUTO_ATTACK_SELF" then return end
+  npDodges = true
+  local dodged = (event == "SPELL_MISS_SELF" and tonumber(arg4) == 3)
+              or (event == "AUTO_ATTACK_SELF" and tonumber(arg5) == 2)
+  if dodged and arg2 then
+    local mine = type(GetUnitGUID) ~= "function" or GetUnitGUID("target") == arg2
+    local what = event == "AUTO_ATTACK_SELF" and "auto" or ("spell " .. tostring(arg3))
+    if mine then
+      opUntil, opTarget, opTargetGuid = GetTime() + CFG.OP_WINDOW, nil, arg2
+      if Tracing() then Dbg("OVERPOWER window: your target dodged (" .. what .. ")") end
+    elseif Tracing() then
+      Dbg("OVERPOWER: another mob dodged (" .. what .. ", " .. tostring(arg2) .. "): ignored")
+    end
+  end
+end)
 local lastSwapAt = -10      -- last stance swap sent
 local battleDoneAt = nil    -- in Battle with no Overpower left to do since then
 -- Sunder build guard: if my Sunders don't raise the visible stacks (sunder-
@@ -873,11 +878,10 @@ f:SetScript("OnEvent", function()
     TestAutoLine()
     ProcAttackLine("auto")
     -- "You attack. X dodges." -> Overpower window
-    if event == "CHAT_MSG_COMBAT_SELF_MISSES" and arg1 then
+    if event == "CHAT_MSG_COMBAT_SELF_MISSES" and arg1 and not npDodges then
       local _, _, who = string.find(arg1, "^You attack%. (.+) dodges%.$")
-      if who then ProbeDump("auto by " .. who) end
       if who then
-        opUntil, opTarget = GetTime() + CFG.OP_WINDOW, who
+        opUntil, opTarget, opTargetGuid = GetTime() + CFG.OP_WINDOW, who, nil
         if Tracing() then Dbg("OVERPOWER window: " .. who .. " dodged your auto") end
       end
     end
@@ -887,9 +891,8 @@ f:SetScript("OnEvent", function()
 
   elseif event == "CHAT_MSG_SPELL_SELF_DAMAGE" then
     -- "Your Bloodthirst was dodged by X." -> Overpower window
-    if arg1 then
+    if arg1 and not npDodges then
       local _, _, sp, who = string.find(arg1, "^Your (.-) was dodged by (.+)%.$")
-      if who then ProbeDump(sp .. " by " .. who) end
       -- Whirlwind / Cleave hit several targets: the one that dodged may be
       -- another mob with your target's name, and Overpower would be refused
       if who and (sp == "Whirlwind" or sp == "Cleave") and not CFG.OP_FROM_AOE then
@@ -897,7 +900,7 @@ f:SetScript("OnEvent", function()
         who = nil
       end
       if who then
-        opUntil, opTarget = GetTime() + CFG.OP_WINDOW, who
+        opUntil, opTarget, opTargetGuid = GetTime() + CFG.OP_WINDOW, who, nil
         if Tracing() then Dbg("OVERPOWER window: " .. who .. " dodged your " .. sp) end
       end
     end
@@ -1076,7 +1079,7 @@ local function OPUp(now, lead)
     if not opUntil then return false end
   end
   if opUntil - (now + (lead or 0)) < 0.2 then return false end
-  if opTarget ~= UnitName("target") then return false end
+  if not OPOnTarget() then return false end
   return CD("Overpower") <= (lead or 0) + 0.02
 end
 
@@ -1188,7 +1191,7 @@ local function StrikeUsable(name, now, lead, rage, free)
   local st = ActiveStance()
   if name == "Overpower" then
     if not CFG.USE_OVERPOWER or not opUntil or opUntil - (now + lead) < 0.2 then return false end
-    if opTarget ~= UnitName("target") then return false end
+    if not OPOnTarget() then return false end
     if st == "Battle Stance" then return free >= COST["Overpower"]() end
     if st ~= "Berserker Stance" then return false end
     local loss = SwapLoss(rage)
@@ -1224,7 +1227,7 @@ local function PairWorks(first, second, now, lead, rage, free, incoming)
   local st = ActiveStance()
   local r = free
   if first == "Overpower" then
-    if not opUntil or opUntil - (now + lead) < 0.4 or opTarget ~= UnitName("target") then return false end
+    if not opUntil or opUntil - (now + lead) < 0.4 or not OPOnTarget() then return false end
     if st == "Berserker Stance" then
       local loss = SwapLoss(rage)
       if loss > CFG.OP_RAGE_LOSS then return false end
@@ -1241,7 +1244,7 @@ local function PairWorks(first, second, now, lead, rage, free, incoming)
   -- the auto for the 2nd strike, a short one would leave it stranded
   if first ~= "Overpower" then r = r + incoming end
   if second == "Overpower" then
-    if not opUntil or opUntil - (now + lead + CFG.GCD) < 0.3 or opTarget ~= UnitName("target") then return false end
+    if not opUntil or opUntil - (now + lead + CFG.GCD) < 0.3 or not OPOnTarget() then return false end
     if st == "Berserker Stance" then
       local loss = r - keep
       if loss < 0 then loss = 0 end
@@ -1668,6 +1671,13 @@ local function Run(modeName)
   if not opener and not slammed and fr > slamFrac then
     if autoPending then
       if Tracing() then Dbg("auto pending at end of Slam cast: Slam waits for the auto") end
+      return
+    end
+    -- the swing timer is at 0 but the auto hasn't landed (it can run late,
+    -- e.g. when Flurry drops mid-swing): a Slam queued now could start
+    -- before it and hold it back for a whole cast. Wait to see the auto.
+    if lead > 0 and remSec <= 0.02 then
+      if Tracing() then Dbg("swing timer at 0, auto not seen yet: Slam waits for it") end
       return
     end
     if free >= CFG.SLAM_COST and (lead == 0 or NPQueues(true)) then Cast("Slam", lead) end

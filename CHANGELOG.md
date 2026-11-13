@@ -28,6 +28,10 @@
   its Slam window has closed, a Bloodthirst + Whirlwind pair would also cost
   the next Slam (two strikes for two swings) and leave a hole. The first
   strike now goes alone, and the second stays ready for a real pair.
+- **Rend before leaving Battle Stance** ("...and Rend", Overpower section,
+  on by default): after Overpower, when swapping back would lose 5 rage or
+  more, Rend spends 10 of it, if its GCD costs no Slam and your last Rend is
+  (nearly) over. The settings window is a little taller to fit it.
 
 ## 1.1 — 2026-11-13
 

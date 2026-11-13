@@ -545,7 +545,8 @@ or slow). Below that, three tabs:
 | Overpower (stance dance) | After a dodge: Battle Stance, Overpower, back to Berserker (see *Overpower and stance dancing*). | on |
 | ...even if it costs the next Slam | Overpower takes the next GCD slot, before BT + WW pairs, even when that costs the next Slam: alone only if the stance swap loses no rage, otherwise in a pair. Off: only slots that cost no Slam. | on |
 | Rage a swap may lose | Rage the swap *to* Battle may throw away above what Tactical Mastery keeps (0–30). | 0 |
-| Stay in Battle to dump rage | After Overpower, stay in Battle up to 3s to dump the rage a swap would lose: Bloodthirst / MS, Heroic Strike, Slam. Off: swap back straight away. | on |
+| Stay in Battle to dump rage | After Overpower, stay in Battle up to 3s to dump the rage a swap would lose: Bloodthirst / MS, Rend, Heroic Strike, Slam. Off: swap back straight away. | on |
+| ...and Rend | While staying in Battle: Rend when a swap would lose 5 rage or more (`REND_MIN_LOSS`), its GCD costs no Slam (this swing's Slam done or out of reach, the next Slam window still open), and your last Rend is over or has 3s or less left. | on |
 
 **Advanced**: set once.
 

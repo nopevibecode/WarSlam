@@ -18,7 +18,7 @@ end
 local PROFILE_KEYS = { "SLAM_FRAC", "GCD_SLACK", "CAST_LOCK", "USE_SUNDER", "USE_SHOUT",
   "OPENER", "OPENER_ANY", "SLOW_WEAPON", "PVP_BASIC", "ST_DUMP", "MT_DUMP", "USE_NAMPOWER", "NP_LEAD",
   "PAIR_STRIKES", "PAIR_RAGE", "PAIR_HS_AT", "SUNDER_ANY", "SUNDER_BUILD_GCD", "DW_JUJU", "DW_JUJU_DELAY",
-  "USE_OVERPOWER", "OP_RAGE_LOSS", "OP_STAY_BATTLE", "OP_TAKE_BLOCKED", "BLOODRAGE", "BLOODRAGE_DW_AFTER" }
+  "USE_OVERPOWER", "OP_RAGE_LOSS", "OP_STAY_BATTLE", "OP_TAKE_BLOCKED", "OP_REND", "BLOODRAGE", "BLOODRAGE_DW_AFTER" }
 local OTHER_KEYS = { "MINIMAP_SHOW", "MINIMAP_ANGLE" }
 
 local function Get(k)
@@ -377,7 +377,7 @@ local function Head(x, y, text)
   return t
 end
 
-local W, H = 600, 560
+local W, H = 600, 584
 local C1, C2 = 30, 315       -- the two columns of every tab
 local TOP = -112             -- where tab content starts
 
@@ -596,7 +596,7 @@ local function Build()
   MakeCheck("OpBlocked", "...even if it costs the next Slam", C2 - 4, y - 44,
     function() return CFG.OP_TAKE_BLOCKED end,
     function(on) CFG.OP_TAKE_BLOCKED = on end,
-    "On: Overpower takes the next GCD slot, before BT + WW\npairs, even when that slot costs the next Slam\n(5 rage instead of 15).\nOff: only in slots that cost no Slam, or the Sunder build.")
+    "On: Overpower takes the next GCD slot, before BT + WW\npairs, even when that slot costs the next Slam: alone\nonly if the swap loses no rage, otherwise in a pair.\nOff: only in slots that cost no Slam, or the Sunder build.")
   MakeSlider("OpLoss", "Rage a swap may lose", 0, 30, 5, "%d", C2, y - 88,
     function() return CFG.OP_RAGE_LOSS end,
     function(v) CFG.OP_RAGE_LOSS = v end,
@@ -604,7 +604,11 @@ local function Build()
   MakeCheck("OpStay", "Stay in Battle to dump rage", C2 - 4, y - 116,
     function() return CFG.OP_STAY_BATTLE end,
     function(on) CFG.OP_STAY_BATTLE = on end,
-    "On: after Overpower, stay in Battle to dump the rage\na swap would lose: Bloodthirst / MS if ready, Heroic\nStrike while above what Tactical Mastery keeps + its\ncost, Slam. At most 3s, never when WW is due.\nOff: back to Berserker right away, even losing rage.")
+    "On: after Overpower, stay in Battle to dump the rage\na swap would lose: Bloodthirst / MS if ready, Rend (see\nbelow), Heroic Strike while above what Tactical Mastery\nkeeps + its cost, Slam. At most 3s, never when WW is due.\nOff: back to Berserker right away, even losing rage.")
+  MakeCheck("OpRend", "...and Rend", C2 - 4, y - 140,
+    function() return CFG.OP_REND end,
+    function(on) CFG.OP_REND = on end,
+    "While staying in Battle: Rend when a swap would lose\n5 rage or more, its GCD costs no Slam, and your last\nRend is over or nearly (Rend needs Battle Stance).")
   local tmLabel = Label(C2 + 76, y - 2, "GameFontHighlightSmall", 200)
   frame.RefreshTM = function()
     local kept, pts = WarSlamRageKept()

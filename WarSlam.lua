@@ -94,6 +94,10 @@ local CFG = {
   AUTO_BERSERKER = true,  -- in combat in your own Battle Stance (Charge): to Berserker as soon as no rage is lost
   OP_STAY_BATTLE = true,  -- after Overpower, stay in Battle to dump the rage a swap would lose (BT / MS, Heroic Strike)
   OP_STAY_MAX    = 3,     -- ...but never longer than this many seconds
+  OP_REND        = true,  -- ...and spend it on Rend (Battle Stance only) when it doesn't cost a Slam
+  REND_MIN_LOSS  = 5,     -- ...only when a swap would lose at least this much rage (Rend costs 10)
+  REND_COST      = 10,
+  REND_DUR       = 21,    -- Rend's duration: not re-applied while more than 3s of yours is left
   OP_COST        = 5,
   OP_WINDOW      = 4,     -- Overpower counted usable this long after the dodge (5s in theory; on OctoWoW it fails past ~4s)
   SUNDER_BUILD_GCD = true, -- boss, under 5 Sunders: no Slam, chain BT / WW / Sunder GCDs
@@ -249,6 +253,7 @@ local COST = {
   ["Battle Shout"]  = function() return CFG.SHOUT_COST end,
   ["Death Wish"]    = function() return CFG.DW_COST end,
   ["Overpower"]     = function() return CFG.OP_COST end,
+  ["Rend"]          = function() return CFG.REND_COST end,
 }
 
 ------------------------------------------------------------------------
@@ -1503,6 +1508,21 @@ end
 -- Small steps kept out of Run: the 1.12 client's Lua refuses a function
 -- that uses more than 60 of the file's locals (Run is close to that)
 ------------------------------------------------------------------------
+-- Rend as a rage dump in Battle Stance: only if its GCD costs no Slam (this
+-- swing's Slam is done or out of reach, and the next Slam window survives)
+local rendAt = -100
+local function RendFits()
+  if type(st_timer) ~= "number" then return false end
+  local swing = UnitAttackSpeed("player")
+  local rem = st_timer
+  if CFG.ST_UNIT == "fraction" then rem = st_timer * swing end
+  local frac = CFG.SLAM_FRAC
+  if frac == "auto" then frac = (WarSlamSlamFrac()) end
+  local slamLatest = swing * frac
+  local thisSlamOpen = lastSlam < swingStart and rem >= slamLatest
+  return not thisSlamOpen and CFG.GCD <= rem + swing - slamLatest
+end
+
 -- back to Berserker once the Overpower is done or its window closed (off the
 -- GCD); optionally stay a little in Battle to spend rage. true = acted.
 local function SwapBack(now, rage, free, dump)
@@ -1546,6 +1566,15 @@ local function SwapBack(now, rage, free, dump)
     and not wwDue
   if not stay then
     SwapTo("Berserker Stance", string.format("Overpower done, %d rage lost", loss))
+    return true
+  end
+  -- Rend (GCD) to spend rage the swap would lose, when it costs no Slam and
+  -- your last Rend is (nearly) over
+  if CFG.OP_REND and loss >= CFG.REND_MIN_LOSS and Index("Rend") and CD("Rend") <= 0.02
+     and free >= COST["Rend"]() and now - rendAt > CFG.REND_DUR - 3 and RendFits() then
+    if Tracing() then Dbg(string.format("STANCE: Rend before swapping back (a swap would lose %d)", loss)) end
+    rendAt = now
+    Cast("Rend", 0)
     return true
   end
   -- Heroic Strike / Cleave (off the GCD) while the rage stays above what a

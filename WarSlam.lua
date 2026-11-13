@@ -80,6 +80,8 @@ local CFG = {
   JUJU_NAME      = "Juju Flurry",
   USE_OVERPOWER  = true,  -- Overpower after a dodge, dancing Berserker -> Battle -> Berserker
   OP_RAGE_LOSS   = 0,     -- rage a stance swap may throw away (above what Tactical Mastery keeps)
+  OP_STAY_BATTLE = false, -- after Overpower, stay in Battle to spend rage before swapping back
+  OP_STAY_MAX    = 3,     -- ...but never longer than this many seconds
   OP_COST        = 5,
   OP_WINDOW      = 5,     -- Overpower is usable this long after the dodge
   SUNDER_BUILD_GCD = true, -- boss, under 5 Sunders: no Slam, chain BT / WW / Sunder GCDs
@@ -498,6 +500,7 @@ local combatStartAt = nil
 -- Overpower: open for OP_WINDOW seconds after your target dodges
 local opUntil, opTarget = nil, nil
 local lastSwapAt = -10      -- last stance swap sent
+local battleDoneAt = nil    -- in Battle with no Overpower left to do since then
 -- Sunder build guard: if my Sunders don't raise the visible stacks (sunder-
 -- immune target, raid debuff limit), the build phase would never end and no
 -- Slam would ever go out: give up on it for that target until combat ends
@@ -1279,14 +1282,19 @@ local function Run(modeName)
   -- STANCE: back to Berserker once the Overpower is done or its window closed
   -- (off the GCD). If that would throw away more rage than OP_RAGE_LOSS, stay
   -- in Battle and spend it first (Slam, BT, HS work there), unless WW is due.
+  if ActiveStance() ~= "Battle Stance" or OPUp(now, 1.0) then battleDoneAt = nil end
   if CFG.USE_OVERPOWER and inCombat and not casting and ActiveStance() == "Battle Stance"
      and not OPUp(now, 1.0) and StanceIndex("Berserker Stance") and StanceReady() then
+    if not battleDoneAt then battleDoneAt = now end
     local loss = SwapLoss(rage)
-    if loss <= CFG.OP_RAGE_LOSS or (Index("Whirlwind") and CD("Whirlwind") <= 1.5) then
+    -- optional: stay a little to spend the rage, never past OP_STAY_MAX or a due WW
+    local stay = CFG.OP_STAY_BATTLE and loss > CFG.OP_RAGE_LOSS and now - battleDoneAt < CFG.OP_STAY_MAX
+      and not (Index("Whirlwind") and CD("Whirlwind") <= 1.5)
+    if not stay then
       SwapTo("Berserker Stance", string.format("Overpower done, %d rage lost", loss))
       return
     end
-    if Tracing() then Dbg(string.format("STANCE: staying in Battle, a swap would lose %d rage", loss)) end
+    if Tracing() then Dbg(string.format("STANCE: staying in Battle to spend rage (a swap would lose %d), %.1fs left", loss, CFG.OP_STAY_MAX - (now - battleDoneAt))) end
   end
 
   local gcd = CD("Slam")

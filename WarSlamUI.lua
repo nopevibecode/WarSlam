@@ -18,7 +18,7 @@ end
 local PROFILE_KEYS = { "SLAM_FRAC", "GCD_SLACK", "CAST_LOCK", "USE_SUNDER", "USE_SHOUT",
   "OPENER", "OPENER_ANY", "SLOW_WEAPON", "PVP_BASIC", "ST_DUMP", "MT_DUMP", "USE_NAMPOWER", "NP_LEAD",
   "PAIR_STRIKES", "PAIR_RAGE", "PAIR_HS_AT", "SUNDER_ANY", "SUNDER_BUILD_GCD", "DW_JUJU", "DW_JUJU_DELAY",
-  "USE_OVERPOWER", "OP_RAGE_LOSS" }
+  "USE_OVERPOWER", "OP_RAGE_LOSS", "OP_STAY_BATTLE" }
 local OTHER_KEYS = { "MINIMAP_SHOW", "MINIMAP_ANGLE" }
 
 local function Get(k)
@@ -566,7 +566,11 @@ local function Build()
     function() return CFG.OP_RAGE_LOSS end,
     function(v) CFG.OP_RAGE_LOSS = v end,
     "0 = only swap when your rage fits in what Tactical\nMastery keeps (5 per point).")
-  local tmLabel = Label(C2, y - 94, "GameFontHighlightSmall", 250)
+  MakeCheck("OpStay", "Stay in Battle to spend rage", C2 - 4, y - 92,
+    function() return CFG.OP_STAY_BATTLE end,
+    function(on) CFG.OP_STAY_BATTLE = on end,
+    "Off: back to Berserker right after Overpower,\neven if the swap loses rage.\nOn: stay in Battle to spend the rage first (Slam,\nBT, HS work there), at most 3s, or until WW is due.")
+  local tmLabel = Label(C2, y - 116, "GameFontHighlightSmall", 250)
   frame.RefreshTM = function()
     local kept, pts = WarSlamRageKept()
     tmLabel:SetText(string.format("Tactical Mastery %d/5: a swap keeps |cffffd000%d rage|r", pts or 0, kept))

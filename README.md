@@ -337,9 +337,12 @@ stance dance, starting from Berserker Stance:
 
 A swap throws away the rage above what **Tactical Mastery** keeps (5 per
 point, read from your talents). WarSlam only swaps when that loss is within
-the **Rage a swap may lose** slider (default 0, so no loss). If swapping back
-would lose rage, it stays in Battle and spends the rage first (Slam,
-Bloodthirst and Heroic Strike work there), unless Whirlwind is due. Without
+the **Rage a swap may lose** slider (default 0, so no loss). The swap back
+to Berserker happens right after Overpower, even if it loses rage, so
+you're never stuck in Battle Stance. Tick **Stay in Battle to spend rage**
+to stay a little and spend the rage first instead (Slam, Bloodthirst and
+Heroic Strike work there): at most 3 seconds, and never when Whirlwind is
+due. Without
 Tactical Mastery, a swap keeps no rage, so Overpower only happens when your
 rage is within the slider. In Defensive Stance, WarSlam never swaps. In PvP
 mode there's no Overpower.
@@ -438,7 +441,8 @@ or slow). Below that, three tabs:
 | Boss opener | Battle Shout and Sunder before the 2nd auto (see *Boss opener*). | on |
 | PvP: only Slam + BT / MS / WW | In battlegrounds or against enemy players: no Battle Shout, Sunder or opener. | on |
 | Overpower (stance dance) | After a dodge: Battle Stance, Overpower, back to Berserker (see *Overpower and stance dancing*). | on |
-| Rage a swap may lose | Rage a stance swap may throw away above what Tactical Mastery keeps (0–30). | 0 |
+| Rage a swap may lose | Rage the swap *to* Battle may throw away above what Tactical Mastery keeps (0–30). | 0 |
+| Stay in Battle to spend rage | After Overpower, stay in Battle up to 3s to spend rage before swapping back. Off: swap back straight away. | off |
 
 **Advanced**: set once.
 
@@ -921,6 +925,8 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `PAIR_RAGE` | 0 | window | How much rage short of both costs the pair may start (0 = both affordable now). Capped by the measured rage per auto, and 0 when a Heroic Strike is queued. |
 | `USE_OVERPOWER` | on | window | Overpower after a dodge, with the stance dance. |
 | `OP_RAGE_LOSS` | 0 | window | Rage a stance swap may throw away above what Tactical Mastery keeps. |
+| `OP_STAY_BATTLE` | off | window | Stay in Battle after Overpower to spend rage first. |
+| `OP_STAY_MAX` | 3 | `/run` | Longest stay in Battle when that's on. |
 | `OP_WINDOW` | 5 | `/run` | How long Overpower stays usable after a dodge. |
 | `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
 | `DW_JUJU_DELAY` | 9 | window | Seconds between Death Wish and the Juju Flurry (5–15). It waits for the end of a Slam cast, so it can come a little later. |

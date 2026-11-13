@@ -1168,7 +1168,8 @@ end
 local function PairWorks(first, second, now, lead, rage, free, incoming)
   if CD(first) > lead + 0.02 or CD(second) > lead + CFG.GCD + 0.05 then return false end
   local keep = WarSlamRageKept()
-  local reserve = rage - free                        -- Heroic Strike / Slam already paid for
+  -- rage owed to a Slam being cast or a queued Heroic Strike is spent by the
+  -- time of a later swap, so swaps are judged on `free` (not `rage`)
   local st = ActiveStance()
   local r = free
   if first == "Overpower" then
@@ -1191,7 +1192,7 @@ local function PairWorks(first, second, now, lead, rage, free, incoming)
   if second == "Overpower" then
     if not opUntil or opUntil - (now + lead + CFG.GCD) < 0.3 or opTarget ~= UnitName("target") then return false end
     if st == "Berserker Stance" then
-      local loss = r + reserve - keep
+      local loss = r - keep
       if loss < 0 then loss = 0 end
       if loss > CFG.OP_RAGE_LOSS then return false end
       r = r - loss
@@ -1199,7 +1200,7 @@ local function PairWorks(first, second, now, lead, rage, free, incoming)
     return r >= COST["Overpower"]()
   end
   if second == "Whirlwind" and st == "Battle Stance" then
-    local loss = r + reserve - keep                  -- the swap back throws this away
+    local loss = r - keep                            -- the swap back throws this away
     if loss > 0 then r = r - loss end
   end
   return r >= COST[second]()

@@ -326,7 +326,7 @@ for the end of the cast and takes that swing's Slam. Instead, press
 ## Overpower and stance dancing
 
 When your target **dodges** (an auto, Bloodthirst, Whirlwind, Slam...),
-Overpower is usable for 5 seconds, in Battle Stance. WarSlam handles the
+Overpower is usable for a few seconds (5 in theory, about 4 in practice on OctoWoW), in Battle Stance. WarSlam handles the
 stance dance, starting from Berserker Stance:
 
 1. Overpower is a strike like Bloodthirst and Whirlwind: it can replace any
@@ -941,7 +941,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `OP_TAKE_BLOCKED` | on | window | Overpower may take a slot that costs the next Slam. |
 | `OP_STAY_BATTLE` | off | window | Stay in Battle after Overpower to spend rage first. |
 | `OP_STAY_MAX` | 3 | `/run` | Longest stay in Battle when that's on. |
-| `OP_WINDOW` | 5 | `/run` | How long Overpower stays usable after a dodge. |
+| `OP_WINDOW` | 4 | `/run` | How long after a dodge WarSlam still goes for Overpower. 5s in theory, but on OctoWoW it's refused past about 4s. If one is refused anyway, WarSlam takes the window as closed and swaps back. |
 | `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
 | `DW_JUJU_DELAY` | 9 | window | Seconds between Death Wish and the Juju Flurry (5–15). It waits for the end of a Slam cast, so it can come a little later. |
 | `PAIR_TIMEOUT` | 4 | `/run` | Forget an unfinished pair after this many seconds. |

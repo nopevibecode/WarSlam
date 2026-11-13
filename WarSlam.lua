@@ -84,7 +84,7 @@ local CFG = {
   OP_STAY_BATTLE = false, -- after Overpower, stay in Battle to spend rage before swapping back
   OP_STAY_MAX    = 3,     -- ...but never longer than this many seconds
   OP_COST        = 5,
-  OP_WINDOW      = 5,     -- Overpower is usable this long after the dodge
+  OP_WINDOW      = 4,     -- Overpower counted usable this long after the dodge (5s in theory; on OctoWoW it fails past ~4s)
   SUNDER_BUILD_GCD = true, -- boss, under 5 Sunders: no Slam, chain BT / WW / Sunder GCDs
   SUNDER_ANY     = false, -- full Sunder priority on every target (dummy tests); off = bosses only
   PAIR_HS_AT     = 90,   -- pair coming up: Heroic Strike only at this much rage (instead of 72)
@@ -207,9 +207,12 @@ local lastGcdCastAt = -10
 local lastGcdName = nil  -- last GCD ability sent (Slam included): a pair may only follow a Slam
 local procWatch = {}   -- procWatch.current = proc being followed (see extra attack tracking)
 -- lead > 0: Nampower will fire it that many seconds from now (queued)
+local opSentAt = nil        -- last Overpower sent: if its cooldown doesn't start, the window is gone
+
 local function Cast(name, lead)
   lead = lead or 0
   if name ~= "Heroic Strike" and name ~= "Cleave" then lastGcdCastAt = GetTime() + lead; lastGcdName = name end
+  if name == "Overpower" and not opSentAt then opSentAt = GetTime() + lead end
   local pc = procWatch.current
   if pc and not pc.nextCast and name ~= "Heroic Strike" and name ~= "Cleave" then
     pc.nextCast = string.format("%s %s +%.2fs", lead > 0 and "queued" or "cast", name, GetTime() - pc.t)
@@ -1024,6 +1027,15 @@ end
 -- Overpower window open on your target, and Overpower off cooldown by then
 local function OPUp(now, lead)
   if not CFG.USE_OVERPOWER or not opUntil or not Index("Overpower") then return false end
+  -- an Overpower was sent but never went off: the server says the window is over
+  if opSentAt and now - opSentAt > 0.5 then
+    if CD("Overpower") < CFG.GCD + 0.1 then
+      if Tracing() then Dbg("OVERPOWER refused: window over") end
+      opUntil = nil
+    end
+    opSentAt = nil
+    if not opUntil then return false end
+  end
   if opUntil - (now + (lead or 0)) < 0.2 then return false end
   if opTarget ~= UnitName("target") then return false end
   return CD("Overpower") <= (lead or 0) + 0.02

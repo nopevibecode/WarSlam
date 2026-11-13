@@ -124,10 +124,10 @@ end
 -- Created once, from your current settings, with these changes:
 local BASE_PROFILES = {
   -- Slow weapon rotation "auto": 3.40 / 3.50 are fast weapons (Slam trade, BT + WW pair),
-  -- 3.60 / 3.80 slow ones. Heroic Strike only near the rage cap: the rage does
-  -- more as Bloodthirst / Whirlwind / Slam.
-  ["Base 3.40"] = { speed = 3.40, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 90 },
-  ["Base 3.50"] = { speed = 3.50, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 90 },
+  -- 3.60 / 3.80 slow ones. On slow ones, Heroic Strike only near the rage cap:
+  -- the rage does more as Bloodthirst / Whirlwind / Slam.
+  ["Base 3.40"] = { speed = 3.40, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 72 },  -- fast rules: the window and threshold made no difference
+  ["Base 3.50"] = { speed = 3.50, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 72 },
   ["Base 3.60"] = { speed = 3.60, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 94 },  -- +4.1% over "auto" / 72
   ["Base 3.80"] = { speed = 3.80, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 94 },  -- +4.6% over "auto" / 72
 }
@@ -143,8 +143,8 @@ local function CreateBaseProfiles()
         WarSlamSettings.profiles[name] = p
       end
     end
-  elseif v < 3 then
-    -- version 3: re-tuned Slam window and Heroic Strike threshold (1.1).
+  elseif v < 4 then
+    -- version 3/4: re-tuned Slam window and Heroic Strike threshold (1.1).
     -- Version 1 also forced "Slow weapon rotation = Yes" in every base profile.
     for name, b in pairs(BASE_PROFILES) do
       local p = WarSlamSettings.profiles[name]
@@ -156,7 +156,7 @@ local function CreateBaseProfiles()
       Save()
     end
   end
-  WarSlamSettings.baseProfiles = 3
+  WarSlamSettings.baseProfiles = 4
 end
 
 -- base profile for a weapon speed, if one exists (and still exists)

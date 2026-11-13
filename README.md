@@ -277,24 +277,28 @@ variance:
 
 | Profile | Slam window | Slow weapon | Heroic Strike at | Gain over Auto / 72 (dummy / raid / heavy) |
 |---|---|---|---|---|
-| **Base 3.40** | 0.60 | Auto (= fast) | 90 | +0.3% / +2.0% / +0.4% |
-| **Base 3.50** | Auto | Auto (= fast) | 90 | +0.2% / +1.3% / +0.5% |
+| **Base 3.40** | Auto | Auto (= fast) | 72 | no change (see below) |
+| **Base 3.50** | Auto | Auto (= fast) | 72 | no change (see below) |
 | **Base 3.60** | 0.60 | Auto (= slow) | 94 | +1.1% / +5.6% / +5.6% |
 | **Base 3.80** | 0.60 | Auto (= slow) | 94 | +0.9% / +5.9% / +6.8% |
 
 What the simulation found:
 
-- **Heroic Strike near the rage cap only.** Rage does more as Bloodthirst,
-  Whirlwind or Slam than as Heroic Strike, so the dump threshold went from 72
-  to 90–94. Most of the gain is in raids, where rage comes in faster.
-- **Slam window 0.60 on 3.40, 3.60 and 3.80.** Starting a Slam a little later
-  in the swing, even if it delays the next auto slightly, beats skipping it.
-  On 3.50 the Auto window stays best.
+- **Slow weapons (3.60, 3.80): Heroic Strike near the rage cap only.** Rage
+  does more as Bloodthirst, Whirlwind or Slam than as Heroic Strike, so the
+  dump threshold went from 72 to 94. Most of the gain is in raids, where rage
+  comes in faster.
+- **Slow weapons: Slam window 0.60.** Starting a Slam a little later in the
+  swing, even if it delays the next auto slightly, beats skipping it.
+- **Fast weapons (3.40, 3.50): unchanged.** With the fast rules (Slam trade,
+  BT + WW pairs) the Auto window never delays an auto and was as good as or
+  better than any fixed window, and the Heroic Strike threshold made no
+  measurable difference (pairs already spend the rage).
 - **Not speed-dependent:** Overpower's rage-loss limit and "...even if it
   costs the next Slam" made no measurable difference, and pair settings stay
   at their defaults.
 
-Updating to 1.1 applies the new Slam window and Heroic Strike values to your
+Updating applies the new Slam window and Heroic Strike values to your
 existing base profiles once (other settings in them are kept), and to your
 current settings if a base profile is active. Profiles you saved yourself
 aren't touched.

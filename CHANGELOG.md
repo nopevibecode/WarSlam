@@ -2,11 +2,12 @@
 
 ## Unreleased
 
-- **Base profiles re-tuned** on simulated damage with Overpower, Bloodrage
-  and pairs: Heroic Strike at 90 rage (3.40, 3.50) or 94 rage (3.60, 3.80)
-  instead of 72, and a 0.60 Slam window on 3.40, 3.60 and 3.80. The
-  simulation shows +1% to +6% in raids. Applied once to your existing base
-  profiles.
+- **Base profiles re-tuned for slow weapons** on simulated damage with
+  Overpower, Bloodrage and pairs: Base 3.60 and Base 3.80 now queue Heroic
+  Strike at 94 rage instead of 72 and use a 0.60 Slam window (+4% to +5% on
+  average, up to +7% at high rage). Base 3.40 is back to the Auto window
+  (same as Base 3.50); fast weapons are otherwise unchanged. Applied once to
+  your existing base profiles.
 
 ## 1.1 — 2026-11-13
 

@@ -32,6 +32,8 @@ Hand of Justice reset. The rest is still up to you:
 - **Execute isn't handled.** When the target is under 20%, switch to
   Execute yourself.
 
+What changed in each version: see [CHANGELOG.md](CHANGELOG.md).
+
 
 ## Requirements
 

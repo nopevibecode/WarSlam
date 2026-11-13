@@ -2,6 +2,7 @@
 ## Title: WarSlam
 ## Notes: One-button Slam rotation for OctoWoW warriors (needs SP_SwingTimer)
 ## Author: nopevibecode
+## Version: 1.1
 ## SavedVariables: WarSlamLog, WarSlamSettings
 WarSlam.lua
 WarSlamUI.lua

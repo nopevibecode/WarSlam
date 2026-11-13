@@ -87,7 +87,7 @@ local CFG = {
   BLOODRAGE_MIN_HP = 0.30, -- never below this share of your health (Bloodrage costs health)
   BLOODRAGE_DW_AFTER = 15, -- Bloodrage (and its Enrage) for the 2nd half of Death Wish: held before this many seconds in, used from then on as soon as it doesn't overflow rage (0 = off)
   DW_DURATION    = 30,    -- Death Wish lasts this long
-  OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
+  OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam (alone: only if the swap loses no rage)
   TARGET_SETTLE  = 0.4,   -- no Nampower queueing this long after a target change
   OP_FROM_AOE    = false, -- open the Overpower window on Whirlwind / Cleave dodges too (can be another mob)
   AUTO_BERSERKER = true,  -- in combat in your own Battle Stance (Charge): to Berserker as soon as no rage is lost
@@ -1121,7 +1121,8 @@ end
 -- the GCD slot is free for Overpower: cast it in Battle Stance, or swap to
 -- Battle first (off the GCD) when the swap wastes no more than OP_RAGE_LOSS.
 -- Returns true when it did something (this press is used).
-local function TryOverpower(now, lead, rage, free, where)
+local function TryOverpower(now, lead, rage, free, where, maxLoss)
+  maxLoss = maxLoss or CFG.OP_RAGE_LOSS
   if not OPUp(now, lead) or not inCombat then return false end
   local st = ActiveStance()
   if st == "Battle Stance" then
@@ -1135,8 +1136,8 @@ local function TryOverpower(now, lead, rage, free, where)
   if st ~= "Berserker Stance" or casting or not StanceReady() then return false end
   local loss = SwapLoss(rage)
   local after = rage - loss - (free < rage and (rage - free) or 0)  -- what's left for Overpower
-  if loss > CFG.OP_RAGE_LOSS or after < COST["Overpower"]() then
-    if Tracing() then Dbg(string.format("OVERPOWER skipped: swap would lose %d rage (max %d), %d left after (rage %d, free %d)", loss, CFG.OP_RAGE_LOSS, after, rage, free)) end
+  if loss > maxLoss or after < COST["Overpower"]() then
+    if Tracing() then Dbg(string.format("OVERPOWER skipped: swap would lose %d rage (max %d), %d left after (rage %d, free %d)", loss, maxLoss, after, rage, free)) end
     return false
   end
   return SwapTo("Battle Stance", string.format("Overpower in the %s, %d rage lost", where, loss))
@@ -2006,10 +2007,13 @@ local function Run(modeName)
     end
   end
 
-  -- OVERPOWER alone in the next GCD slot, even a blocked one (it then costs
-  -- the next Slam: 5 rage instead of 15), when no pair took it
+  -- OVERPOWER alone in the next GCD slot, even a blocked one, when no pair
+  -- took it. A blocked slot costs the next Slam: one strike for another, so
+  -- it's only worth it (Overpower's near-certain crit) when the stance swap
+  -- loses no rage at all; with rage to lose, Overpower waits for a pair
   if CFG.OP_TAKE_BLOCKED and not pvp and not opener and not pair and (lead == 0 or NPQueues(false))
-     and R.TryOverpower(now, lead, rage, free, "next GCD slot") then
+     and R.TryOverpower(now, lead, rage, free, "next GCD slot",
+       (CFG.GCD - slack > windowEnd) and 0 or nil) then
     return
   end
   -- fast weapons: no slack (set above), a GCD that ends after the next Slam

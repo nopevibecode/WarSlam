@@ -378,9 +378,13 @@ stance dance, starting from Berserker Stance:
    Overpower goes first. A pair only starts if the rage covers both
    strikes and the swaps in between.
 2. With no pair to make, Overpower takes the **next GCD slot** on its own.
-   With a fast weapon that slot usually costs the next Slam: Overpower
-   (5 rage) replaces it. Untick **...even if it costs the next Slam** to
-   only use slots that cost no Slam (and the Sunder build).
+   With a fast weapon that slot usually costs the next Slam, and then
+   Overpower only goes if the stance swap loses **no rage** (or you're
+   already in Battle Stance): it's still one strike between two autos, so
+   Overpower's near-certain crit only beats the Slam when the swap is free.
+   With rage to lose, Overpower waits for a pair (two strikes instead of the
+   Slam). Untick **...even if it costs the next Slam** to only use slots that
+   cost no Slam (and the Sunder build).
 3. Swaps are off the GCD and never happen during a Slam cast: **Battle
    Stance**, the next press casts **Overpower**, then back to **Berserker
    Stance** (Whirlwind needs it).
@@ -536,7 +540,7 @@ or slow). Below that, three tabs:
 | Boss opener | Battle Shout and Sunder before the 2nd auto (see *Boss opener*). | on |
 | PvP: only Slam + BT / MS / WW | In battlegrounds or against enemy players: no Battle Shout, Sunder or opener. | on |
 | Overpower (stance dance) | After a dodge: Battle Stance, Overpower, back to Berserker (see *Overpower and stance dancing*). | on |
-| ...even if it costs the next Slam | Overpower takes the next GCD slot, before BT + WW pairs, even when that costs the next Slam. Off: only slots that cost no Slam. | on |
+| ...even if it costs the next Slam | Overpower takes the next GCD slot, before BT + WW pairs, even when that costs the next Slam: alone only if the stance swap loses no rage, otherwise in a pair. Off: only slots that cost no Slam. | on |
 | Rage a swap may lose | Rage the swap *to* Battle may throw away above what Tactical Mastery keeps (0–30). | 0 |
 | Stay in Battle to dump rage | After Overpower, stay in Battle up to 3s to dump the rage a swap would lose: Bloodthirst / MS, Heroic Strike, Slam. Off: swap back straight away. | on |
 

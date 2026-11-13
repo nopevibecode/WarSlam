@@ -16,6 +16,10 @@
   other mobs: opportunity Sunders only), for new installs and the Defaults
   button, which no longer switches off the Sunder build. Without Nampower it
   stays off by default.
+- **Overpower instead of a Slam only when it's worth it:** alone, it only
+  takes a slot that costs the next Slam if the stance swap loses no rage;
+  otherwise it waits for a pair with Bloodthirst or Whirlwind (two strikes
+  for the Slam).
 
 ## 1.1 — 2026-11-13
 

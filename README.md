@@ -233,7 +233,7 @@ turn this off with **PvP: only Slam + BT / MS / WW** in the settings.
 
 **Stalled swing.** When your target is out of reach (kiting, running,
 behind you), the swing timer sits at 0 and no auto lands. There's no Slam
-window to protect then, so after 0.3s (`STALL`) WarSlam stops holding GCD
+window to protect then, so after 1.0s (`STALL`) WarSlam stops holding GCD
 abilities back and uses Bloodthirst / Mortal Strike / Whirlwind right away.
 As soon as autos land again, the normal rotation resumes. This works in PvE
 too, e.g. when a boss moves out of reach.
@@ -987,7 +987,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `OPENER` | on | window | Boss opener (§8). |
 | `OPENER_ANY` | off | window | Use the opener on every fight, e.g. on a dummy. |
 | `OPENER_SHOUT` | 60 | `/run` | In the opener, recast Battle Shout if it has this many seconds or fewer left. |
-| `STALL` | 0.3 | `/run` | Swing timer stuck at 0 this long, outside a Slam cast: the swing counts as stalled and GCD abilities go out without waiting for a Slam window. |
+| `STALL` | 1.0 | `/run` | Swing timer stuck at 0 this long, outside a Slam cast: the swing counts as stalled and GCD abilities go out without waiting for a Slam window. |
 | `PVP_BASIC` | on | window | In a battleground or against an enemy player: only Slam + Bloodthirst / Mortal Strike / Whirlwind (+ Heroic Strike / Cleave). |
 
 ### Nampower

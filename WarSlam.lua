@@ -103,7 +103,7 @@ local CFG = {
   -- PvP: in a battleground, or against an enemy player, only Slam + Bloodthirst /
   -- Mortal Strike / Whirlwind (+ Heroic Strike / Cleave): no Battle Shout, Sunder or opener
   PVP_BASIC      = true,
-  STALL          = 0.3,  -- swing timer stuck at 0 this long (target out of reach, kiting...): the
+  STALL          = 1.0,  -- swing timer stuck at 0 this long (target out of reach, kiting...): the
                          -- swing is stalled, so GCD abilities go out without waiting for a Slam window
 
   USE_NAMPOWER   = true, -- use Nampower spell queuing when Nampower is installed
@@ -1225,7 +1225,7 @@ local function CastStrike(name, lead, why)
     SwapTo(need, why)
     return "swap"
   end
-  Cast(name, lead)
+  if name == "Sunder Armor" then CastSunder(GetTime(), lead) else Cast(name, lead) end
   return "cast"
 end
 
@@ -1295,7 +1295,7 @@ end
 -- start a pair: its 1st strike now (or the stance swap it needs)
 local function StartPair(first, second, now, lead, why)
   pair = { first = first, second = second, at = now, sent = false }
-  if CastStrike(first, lead, why) == "cast" then pair.sent = true end
+  if CastStrike(first, lead, why) == "cast" then pair.sent, pair.sentAt = true, now + (lead or 0) end
 end
 
 -- would the GCD list pick Battle Shout or Sunder right now? (they keep priority over a pair)
@@ -1458,7 +1458,7 @@ end
 local function OverpowerInBattle(now, lead, free)
   if not (CFG.USE_OVERPOWER and inCombat and ActiveStance() == "Battle Stance"
      and OPUp(now, lead) and Ready("Overpower", free, lead) and (lead == 0 or NPQueues(false))) then return false end
-  if pair and pair.first == "Overpower" and not pair.sent then pair.sent = true
+  if pair and pair.first == "Overpower" and not pair.sent then pair.sent, pair.sentAt = true, now + (lead or 0)
   elseif pair and pair.second == "Overpower" then pair = nil end
   if Tracing() then Dbg("OVERPOWER (in Battle Stance, before anything else)") end
   Cast("Overpower", lead)
@@ -1699,13 +1699,14 @@ local function Run(modeName)
       -- the 1st strike still has to go out (a stance swap came first)
       if R.StrikeUsable(pair.first, now, lead, rage, free) then
         if lead == 0 or NPQueues(false) then
-          if R.CastStrike(pair.first, lead, "pair") == "cast" then pair.sent = true end
+          if R.CastStrike(pair.first, lead, "pair") == "cast" then pair.sent, pair.sentAt = true, now + lead end
         end
         return
       end
       if Tracing() then Dbg("PAIR: " .. pair.first .. " no longer usable: pair dropped") end
       pair = nil
-    elseif CD(pair.first) > CFG.GCD + 0.1 then          -- its own cooldown runs: it was cast
+    elseif CD(pair.first) > CFG.GCD + 0.1                -- its own cooldown runs: it was cast
+        or (pair.first == "Sunder Armor" and pair.sentAt and now - pair.sentAt > 0.3) then  -- no cooldown of its own
       if R.StrikeUsable(pair.second, now, lead, rage, free, true) and (lead == 0 or NPQueues(false)) then
         local n = pair.second
         local res = R.CastStrike(n, lead, "pair")

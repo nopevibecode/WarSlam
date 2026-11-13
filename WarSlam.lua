@@ -216,12 +216,14 @@ local lastGcdName = nil  -- last GCD ability sent (Slam included): a pair may on
 local procWatch = {}   -- procWatch.current = proc being followed (see extra attack tracking)
 -- lead > 0: Nampower will fire it that many seconds from now (queued)
 local opSentAt = nil        -- last Overpower sent: if its cooldown doesn't start, the window is gone
+local opLastSent = -10      -- when the last Overpower was sent (no swap back right after it)
 local ownBattle = false     -- WarSlam put you in Battle (or Overpowered there): only then it swaps you back
 
 local function Cast(name, lead)
   lead = lead or 0
   if name ~= "Heroic Strike" and name ~= "Cleave" then lastGcdCastAt = GetTime() + lead; lastGcdName = name end
   if name == "Overpower" and not opSentAt then opSentAt = GetTime() + lead end
+  if name == "Overpower" then opLastSent = GetTime() + lead end
   if name == "Overpower" then ownBattle = true end
   local pc = procWatch.current
   if pc and not pc.nextCast and name ~= "Heroic Strike" and name ~= "Cleave" then
@@ -542,7 +544,7 @@ npCombat:SetScript("OnEvent", function()
     local mine = type(GetUnitGUID) ~= "function" or GetUnitGUID("target") == arg2
     local what = event == "AUTO_ATTACK_SELF" and "auto" or ("spell " .. tostring(arg3))
     if mine then
-      opUntil, opTarget, opTargetGuid = GetTime() + CFG.OP_WINDOW, nil, arg2
+      opUntil, opTarget, opTargetGuid, opSentAt = GetTime() + CFG.OP_WINDOW, nil, arg2, nil
       if Tracing() then Dbg("OVERPOWER window: your target dodged (" .. what .. ")") end
     elseif Tracing() then
       Dbg("OVERPOWER: another mob dodged (" .. what .. ", " .. tostring(arg2) .. "): ignored")
@@ -892,7 +894,7 @@ f:SetScript("OnEvent", function()
     if event == "CHAT_MSG_COMBAT_SELF_MISSES" and arg1 and not npDodges then
       local _, _, who = string.find(arg1, "^You attack%. (.+) dodges%.$")
       if who then
-        opUntil, opTarget, opTargetGuid = GetTime() + CFG.OP_WINDOW, who, nil
+        opUntil, opTarget, opTargetGuid, opSentAt = GetTime() + CFG.OP_WINDOW, who, nil, nil
         if Tracing() then Dbg("OVERPOWER window: " .. who .. " dodged your auto") end
       end
     end
@@ -911,7 +913,7 @@ f:SetScript("OnEvent", function()
         who = nil
       end
       if who then
-        opUntil, opTarget, opTargetGuid = GetTime() + CFG.OP_WINDOW, who, nil
+        opUntil, opTarget, opTargetGuid, opSentAt = GetTime() + CFG.OP_WINDOW, who, nil, nil
         if Tracing() then Dbg("OVERPOWER window: " .. who .. " dodged your " .. sp) end
       end
     end
@@ -1496,6 +1498,9 @@ end
 -- GCD); optionally stay a little in Battle to spend rage. true = acted.
 local function SwapBack(now, rage, free, dump)
   if ActiveStance() ~= "Battle Stance" then ownBattle = false end
+  -- an Overpower was just sent (maybe still queued in Nampower): swapping now
+  -- would make it fail, so let it land first
+  if now - opLastSent < 0.4 then return false end
   if ActiveStance() ~= "Battle Stance" or OPUp(now, 1.0) then battleDoneAt = nil end
   -- Battle Stance you chose yourself (Charge...): straight to Berserker in
   -- combat as soon as that loses no rage at all; otherwise it's yours to change

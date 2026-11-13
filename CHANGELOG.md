@@ -12,9 +12,10 @@
   speed (when it has a base profile) and resets that base profile if it's
   active. Before, it went back to generic values (Slam window 0.60, Heroic
   Strike at 71, pairs with no leeway).
-- **Sunder Armor on by default** (bosses: full rules, other mobs: opportunity
-  Sunders only), so the Defaults button no longer switches off the Sunder
-  build.
+- **Sunder Armor on by default when Nampower is in use** (bosses: full rules,
+  other mobs: opportunity Sunders only), for new installs and the Defaults
+  button, which no longer switches off the Sunder build. Without Nampower it
+  stays off by default.
 
 ## 1.1 — 2026-11-13
 

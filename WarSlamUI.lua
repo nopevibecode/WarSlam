@@ -192,6 +192,12 @@ local function NPInstalled()
   return WarSlamNampower and WarSlamNampower.installed()
 end
 
+-- Sunder Armor's default: on only with Nampower in use (new installs and Defaults)
+local function SunderDefault()
+  if CFG.USE_NAMPOWER and NPInstalled() then return true end
+  return false
+end
+
 local function GetNP(name)
   local ok, v = pcall(GetCVar, name)
   if ok then return v end
@@ -217,6 +223,7 @@ local loader = CreateFrame("Frame")
 loader:RegisterEvent("VARIABLES_LOADED")
 loader:SetScript("OnEvent", function()
   if event ~= "VARIABLES_LOADED" then return end
+  local freshSunder = type(WarSlamSettings) ~= "table" or WarSlamSettings.USE_SUNDER == nil
   if type(WarSlamSettings) == "table" then
     -- older versions had an on/off trade switch
     if WarSlamSettings.SLOW_WEAPON == nil and WarSlamSettings.TRADE_SLAM == false then
@@ -231,6 +238,7 @@ loader:SetScript("OnEvent", function()
     Apply(WarSlamSettings, PROFILE_KEYS)
     Apply(WarSlamSettings, OTHER_KEYS)
   end
+  if freshSunder then CFG.USE_SUNDER = SunderDefault() end
   Save()
   CreateBaseProfiles()
   if WarSlamUI_CreateMinimap then WarSlamUI_CreateMinimap() end
@@ -804,9 +812,10 @@ local function Build()
   reset:SetHeight(22)
   reset:SetPoint("BOTTOM", frame, "BOTTOM", 0, 18)
   reset:SetText("Defaults")
-  Tip(reset, "Resets WarSlam's own settings, with the simulated values for your weapon's speed when there's a base profile for it (3.40, 3.50, 3.60, 3.80). If that base profile is active, it's reset too.\nNampower settings are not changed.")
+  Tip(reset, "Resets WarSlam's own settings (Sunder Armor on only with Nampower in use), with the simulated values for your weapon's speed when there's a base profile for it (3.40, 3.50, 3.60, 3.80). If that base profile is active, it's reset too.\nNampower settings are not changed.")
   reset:SetScript("OnClick", function()
     Apply(DEFAULTS, PROFILE_KEYS)   -- the minimap button stays where it is
+    CFG.USE_SUNDER = SunderDefault()
     local speed = WarSlamWeapon()
     local tuned
     if speed then

@@ -1196,7 +1196,9 @@ local pair = nil   -- { first =, second =, at =, sent = }: a pair of strikes in 
 ------------------------------------------------------------------------
 -- can this strike go out in the slot that starts in `lead` seconds,
 -- counting the stance swap it may need (and the rage that swap throws away)?
-local function StrikeUsable(name, now, lead, rage, free)
+-- committed: the 2nd strike of a pair whose 1st already went out; its slot
+-- can't go back to the Slam, so an Overpower may lose some rage on the swap
+local function StrikeUsable(name, now, lead, rage, free, committed)
   if not Index(name) or CD(name) > lead + 0.02 then return false end
   local st = ActiveStance()
   if name == "Overpower" then
@@ -1205,7 +1207,7 @@ local function StrikeUsable(name, now, lead, rage, free)
     if st == "Battle Stance" then return free >= COST["Overpower"]() end
     if st ~= "Berserker Stance" then return false end
     local loss = SwapLoss(rage)
-    return loss <= CFG.OP_RAGE_LOSS and free - loss >= COST["Overpower"]()
+    return (committed or loss <= CFG.OP_RAGE_LOSS) and free - loss >= COST["Overpower"]()
   end
   if name == "Whirlwind" and st == "Battle Stance" then
     return free - SwapLoss(rage) >= COST["Whirlwind"]()      -- the swap back comes first
@@ -1419,8 +1421,13 @@ local function SwapBack(now, rage, free, dump)
   local loss = SwapLoss(rage)
   -- stay to dump the rage the swap would throw away: never past OP_STAY_MAX,
   -- never when Whirlwind is due (it needs Berserker)
+  -- Whirlwind due only counts if the rage left after the swap would pay for it
+  -- (during the Sunder build it also keeps 15 for the next Sunder)
+  local wwNeed = COST["Whirlwind"]()
+  if CFG.SUNDER_BUILD_GCD and CFG.USE_SUNDER and SunderFull() and SunderStacks() < 5 then wwNeed = wwNeed + COST["Sunder Armor"]() end
+  local wwDue = Index("Whirlwind") and CD("Whirlwind") <= 1.5 and rage - loss >= wwNeed
   local stay = CFG.OP_STAY_BATTLE and loss > CFG.OP_RAGE_LOSS and now - battleDoneAt < CFG.OP_STAY_MAX
-    and not (Index("Whirlwind") and CD("Whirlwind") <= 1.5)
+    and not wwDue
   if not stay then
     SwapTo("Berserker Stance", string.format("Overpower done, %d rage lost", loss))
     return true
@@ -1697,7 +1704,7 @@ local function Run(modeName)
       if Tracing() then Dbg("PAIR: " .. pair.first .. " no longer usable: pair dropped") end
       pair = nil
     elseif CD(pair.first) > CFG.GCD + 0.1 then          -- its own cooldown runs: it was cast
-      if R.StrikeUsable(pair.second, now, lead, rage, free) and (lead == 0 or NPQueues(false)) then
+      if R.StrikeUsable(pair.second, now, lead, rage, free, true) and (lead == 0 or NPQueues(false)) then
         local n = pair.second
         local res = R.CastStrike(n, lead, "pair")
         if res == "cast" then

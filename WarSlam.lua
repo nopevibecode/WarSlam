@@ -504,6 +504,36 @@ local inCombat, combatSwings = false, 0   -- swings (autos / resets) since comba
 local combatStartAt = nil
 -- Overpower: open for OP_WINDOW seconds after your target dodges
 local opUntil, opTarget = nil, nil
+
+-- PROBE (temporary): learn which Nampower events say who dodged, by ID.
+-- Keeps the last few of these events in memory and writes them to the log
+-- only when the combat log reports a dodge.
+local PROBE_EVENTS = { "AUTO_ATTACK_SELF", "SPELL_MISS_SELF", "SPELL_DAMAGE_EVENT_SELF",
+  "SPELL_GO_SELF", "SPELL_FAILED_SELF", "SPELL_MISS" }
+local probeRing, probeN = {}, 0
+local probeAfter = 0        -- also log events arriving just after a dodge line
+local probe = CreateFrame("Frame")
+for i = 1, table.getn(PROBE_EVENTS) do pcall(probe.RegisterEvent, probe, PROBE_EVENTS[i]) end
+probe:SetScript("OnEvent", function()
+  if not (WarSlamLog and WarSlamLog.enabled) then return end
+  probeN = math.mod(probeN, 12) + 1
+  probeRing[probeN] = { t = GetTime(), s = string.format("%s | %s | %s | %s | %s | %s | %s | %s | %s | %s", event,
+    tostring(arg1), tostring(arg2), tostring(arg3), tostring(arg4), tostring(arg5),
+    tostring(arg6), tostring(arg7), tostring(arg8), tostring(arg9)) }
+  if GetTime() < probeAfter then Log("PROBE  after: " .. probeRing[probeN].s) end
+end)
+local function ProbeDump(why)
+  if not (WarSlamLog and WarSlamLog.enabled) then return end
+  local tg = "?"
+  if type(GetUnitGUID) == "function" then tg = tostring(GetUnitGUID("target")) end
+  Log("PROBE dodge: " .. why .. " | target GUID " .. tg)
+  probeAfter = GetTime() + 0.3
+  local now = GetTime()
+  for i = 1, 12 do
+    local e = probeRing[i]
+    if e and now - e.t < 0.6 then Log(string.format("PROBE  %.2fs ago: %s", now - e.t, e.s)) end
+  end
+end
 local lastSwapAt = -10      -- last stance swap sent
 local battleDoneAt = nil    -- in Battle with no Overpower left to do since then
 -- Sunder build guard: if my Sunders don't raise the visible stacks (sunder-
@@ -845,6 +875,7 @@ f:SetScript("OnEvent", function()
     -- "You attack. X dodges." -> Overpower window
     if event == "CHAT_MSG_COMBAT_SELF_MISSES" and arg1 then
       local _, _, who = string.find(arg1, "^You attack%. (.+) dodges%.$")
+      if who then ProbeDump("auto by " .. who) end
       if who then
         opUntil, opTarget = GetTime() + CFG.OP_WINDOW, who
         if Tracing() then Dbg("OVERPOWER window: " .. who .. " dodged your auto") end
@@ -858,6 +889,7 @@ f:SetScript("OnEvent", function()
     -- "Your Bloodthirst was dodged by X." -> Overpower window
     if arg1 then
       local _, _, sp, who = string.find(arg1, "^Your (.-) was dodged by (.+)%.$")
+      if who then ProbeDump(sp .. " by " .. who) end
       -- Whirlwind / Cleave hit several targets: the one that dodged may be
       -- another mob with your target's name, and Overpower would be refused
       if who and (sp == "Whirlwind" or sp == "Cleave") and not CFG.OP_FROM_AOE then

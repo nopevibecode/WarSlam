@@ -561,7 +561,7 @@ local function Build()
   MakeCheck("Overpower", "Overpower (stance dance)", C2 - 4, y - 20,
     function() return CFG.USE_OVERPOWER end,
     function(on) CFG.USE_OVERPOWER = on end,
-    "After your target dodges: swap to Battle Stance,\nOverpower, swap back to Berserker. Swaps are off the GCD.\nSkipped when a swap would lose more rage than the slider.")
+    "After your target dodges: swap to Battle Stance,\nOverpower, swap back to Berserker. Swaps are off the GCD.\nOverpower pairs with BT / WW like they pair together.\nSkipped when a swap would lose more rage than the slider.")
   MakeCheck("OpBlocked", "...even if it costs the next Slam", C2 - 4, y - 44,
     function() return CFG.OP_TAKE_BLOCKED end,
     function(on) CFG.OP_TAKE_BLOCKED = on end,

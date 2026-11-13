@@ -1125,6 +1125,112 @@ local function PairSoon(mode)
   return true
 end
 
+local pair = nil   -- { first =, second =, at =, sent = }: a pair of strikes in progress
+
+------------------------------------------------------------------------
+-- Strikes with stance needs: Overpower (Battle), Whirlwind (Berserker)
+------------------------------------------------------------------------
+-- can this strike go out in the slot that starts in `lead` seconds,
+-- counting the stance swap it may need (and the rage that swap throws away)?
+local function StrikeUsable(name, now, lead, rage, free)
+  if not Index(name) or CD(name) > lead + 0.02 then return false end
+  local st = ActiveStance()
+  if name == "Overpower" then
+    if not CFG.USE_OVERPOWER or not opUntil or opUntil - (now + lead) < 0.2 then return false end
+    if opTarget ~= UnitName("target") then return false end
+    if st == "Battle Stance" then return free >= COST["Overpower"]() end
+    if st ~= "Berserker Stance" then return false end
+    local loss = SwapLoss(rage)
+    return loss <= CFG.OP_RAGE_LOSS and free - loss >= COST["Overpower"]()
+  end
+  if name == "Whirlwind" and st == "Battle Stance" then
+    return free - SwapLoss(rage) >= COST["Whirlwind"]()      -- the swap back comes first
+  end
+  return Ready(name, free, lead)
+end
+
+-- cast a strike, swapping stance first if it needs one ("swap": the cast
+-- comes on the next press; "wait": the stance can't change yet)
+local function CastStrike(name, lead, why)
+  local st = ActiveStance()
+  local need = (name == "Overpower" and "Battle Stance") or (name == "Whirlwind" and "Berserker Stance")
+  if need and st and st ~= need then
+    if casting or not StanceReady() then return "wait" end
+    SwapTo(need, why)
+    return "swap"
+  end
+  Cast(name, lead)
+  return "cast"
+end
+
+-- would this pair work, rage and stances included? `incoming`: rage the auto
+-- in between brings (0 when none lands or a Heroic Strike replaces it)
+local function PairWorks(first, second, now, lead, rage, free, incoming)
+  if CD(first) > lead + 0.02 or CD(second) > lead + CFG.GCD + 0.05 then return false end
+  local keep = WarSlamRageKept()
+  local reserve = rage - free                        -- Heroic Strike / Slam already paid for
+  local st = ActiveStance()
+  local r = free
+  if first == "Overpower" then
+    if not opUntil or opUntil - (now + lead) < 0.4 or opTarget ~= UnitName("target") then return false end
+    if st == "Berserker Stance" then
+      local loss = SwapLoss(rage)
+      if loss > CFG.OP_RAGE_LOSS then return false end
+      r = r - loss
+    elseif st ~= "Battle Stance" then return false end
+    st = "Battle Stance"
+    r = r - COST["Overpower"]()
+  else
+    if first == "Whirlwind" and st ~= "Berserker Stance" then return false end
+    r = r - COST[first]()
+  end
+  if r < 0 then return false end                     -- the 1st strike must be affordable now
+  -- after Overpower the rage is down to what the swap kept: don't count on
+  -- the auto for the 2nd strike, a short one would leave it stranded
+  if first ~= "Overpower" then r = r + incoming end
+  if second == "Overpower" then
+    if not opUntil or opUntil - (now + lead + CFG.GCD) < 0.3 or opTarget ~= UnitName("target") then return false end
+    if st == "Berserker Stance" then
+      local loss = r + reserve - keep
+      if loss < 0 then loss = 0 end
+      if loss > CFG.OP_RAGE_LOSS then return false end
+      r = r - loss
+    elseif st ~= "Battle Stance" then return false end
+    return r >= COST["Overpower"]()
+  end
+  if second == "Whirlwind" and st == "Battle Stance" then
+    local loss = r + reserve - keep                  -- the swap back throws this away
+    if loss > 0 then r = r - loss end
+  end
+  return r >= COST[second]()
+end
+
+-- best pair for the next two GCD slots: one with Overpower first (its window
+-- is short), strike before Overpower when the rage is above what a swap keeps
+local function ChoosePair(mode, now, lead, rage, free, incoming, pvp)
+  local strikes = StrikeList(mode)
+  if CFG.USE_OVERPOWER and not pvp and Index("Overpower") and opUntil then
+    for i = 1, table.getn(strikes) do
+      if PairWorks(strikes[i], "Overpower", now, lead, rage, free, incoming) then return strikes[i], "Overpower" end
+      if PairWorks("Overpower", strikes[i], now, lead, rage, free, incoming) then return "Overpower", strikes[i] end
+    end
+  end
+  for i = 1, table.getn(strikes) do
+    for j = 1, table.getn(strikes) do
+      if i ~= j and PairWorks(strikes[i], strikes[j], now, lead, rage, free, incoming) then
+        return strikes[i], strikes[j]
+      end
+    end
+  end
+  return nil
+end
+
+-- start a pair: its 1st strike now (or the stance swap it needs)
+local function StartPair(first, second, now, lead, why)
+  pair = { first = first, second = second, at = now, sent = false }
+  if CastStrike(first, lead, why) == "cast" then pair.sent = true end
+end
+
 -- would the GCD list pick Battle Shout or Sunder right now? (they keep priority over a pair)
 local function UtilityWanted(mode, opener, pvp, now, lead, free, gcdFits)
   if pvp then return false end
@@ -1143,7 +1249,6 @@ local function UtilityWanted(mode, opener, pvp, now, lead, free, gcdFits)
   return false
 end
 
-local pair = nil   -- { first =, second =, at = }: a BT + WW pair in progress
 
 ------------------------------------------------------------------------
 -- Death Wish on demand: /run WarSlamDW() arms it, WarSlam fires it in the
@@ -1382,12 +1487,24 @@ local function Run(modeName)
   if pair then
     if now - pair.at > CFG.PAIR_TIMEOUT then
       pair = nil
+    elseif not pair.sent then
+      -- the 1st strike still has to go out (a stance swap came first)
+      if StrikeUsable(pair.first, now, lead, rage, free) then
+        if lead == 0 or NPQueues(false) then
+          if CastStrike(pair.first, lead, "pair") == "cast" then pair.sent = true end
+        end
+        return
+      end
+      if Tracing() then Dbg("PAIR: " .. pair.first .. " no longer usable: pair dropped") end
+      pair = nil
     elseif CD(pair.first) > CFG.GCD + 0.1 then          -- its own cooldown runs: it was cast
-      if Ready(pair.second, free, lead) and (lead == 0 or NPQueues(false)) then
+      if StrikeUsable(pair.second, now, lead, rage, free) and (lead == 0 or NPQueues(false)) then
         local n = pair.second
-        pair = nil
-        if Tracing() then Dbg("PAIR: " .. n .. " instead of the Slam") end
-        Cast(n, lead)
+        local res = CastStrike(n, lead, "pair")
+        if res == "cast" then
+          pair = nil
+          if Tracing() then Dbg("PAIR: " .. n .. " instead of the Slam") end
+        end
         return
       end
       -- short of rage but the auto in between hasn't landed yet: wait for its rage
@@ -1472,22 +1589,13 @@ local function Run(modeName)
      and not UtilityWanted(mode, opener, pvp, now, lead, free, false) then
     local nextClose = rem + swing * (1 - slamFrac)    -- next swing's Slam window closes
     if lead + 2 * CFG.GCD <= nextClose then
-      local strikes = StrikeList(mode)
-      local first, second
-      for i = 1, table.getn(strikes) do
-        if not first and Ready(strikes[i], free, lead) then first = strikes[i] end
-      end
-      for i = 1, table.getn(strikes) do
-        local n = strikes[i]
-        if first and n ~= first and CD(n) <= lead + CFG.GCD + 0.05 then second = n end
-      end
-      if first and second and free >= COST[first]() + COST[second]() then
+      local first, second = ChoosePair(mode, now, lead, rage, free, 0, pvp)
+      if first then
         if Tracing() then
           Dbg(string.format("PAIR NOW: %s + %s up, rage %d: both before the next auto (done in %.2fs, next Slam window closes in %.2fs), Slam after it",
             first, second, free, lead + 2 * CFG.GCD, nextClose))
         end
-        pair = { first = first, second = second, at = now }
-        Cast(first, lead)
+        StartPair(first, second, now, lead, "pair now")
         return
       end
     end
@@ -1517,14 +1625,6 @@ local function Run(modeName)
     return
   end
 
-  -- OVERPOWER in the next GCD slot, even a blocked one (it then costs the
-  -- next Slam: 5 rage instead of 15), before pairs and trades
-  if CFG.OP_TAKE_BLOCKED and not pvp and not opener and (lead == 0 or NPQueues(false))
-     and TryOverpower(now, lead, rage, free, "next GCD slot") then
-    pair = nil
-    return
-  end
-
   -- PAIR, 1st strike: fast weapon, both strikes up, rage for both -> fire the
   -- 1st now even if it costs the next Slam; the 2nd replaces that Slam (0c)
   -- only in the 1st GCD slot after a Slam: after another GCD (Sunder, Shout,
@@ -1541,37 +1641,29 @@ local function Run(modeName)
   end
   if CFG.PAIR_STRIKES and not SlowWeapon() and not opener and not pair and afterSlam
      and (lead == 0 or NPQueues(false)) and not UtilityWanted(mode, opener, pvp, now, lead, free, gcdFits) then
-    local strikes = StrikeList(mode)
-    local first, second = nil, nil
-    for i = 1, table.getn(strikes) do
-      if not first and Ready(strikes[i], free, lead) then first = strikes[i] end
-    end
-    if first then
-      for i = 1, table.getn(strikes) do
-        local n = strikes[i]
-        -- the other strike, ready by the end of the 1st one's GCD
-        if not second and n ~= first and CD(n) <= lead + CFG.GCD + 0.05 then second = n end
-      end
-    end
     -- rage that comes in before the 2nd strike: the auto in between, if it
     -- lands in time and no HS / Cleave replaces it (capped by PAIR_RAGE)
     local incoming = 0
     if not queuedName and rem < lead + CFG.GCD + 0.3 then incoming = math.floor(autoRage - autoDev / 2) end
     if incoming < 0 then incoming = 0 end
     if incoming > CFG.PAIR_RAGE then incoming = CFG.PAIR_RAGE end
-    local need = 999
-    if first and second then need = COST[first]() + COST[second]() - incoming end
-    if first and second and Tracing() and free < need then
-      Dbg(string.format("PAIR: %s + %s up but rage %d < %d (auto brings ~%d%s): no pair", first, second, free, need, incoming, queuedName and ", HS queued" or ""))
-    end
-    if first and second and free >= need then
+    local first, second = ChoosePair(mode, now, lead, rage, free, incoming, pvp)
+    if first then
       if Tracing() then
         Dbg(string.format("PAIR: %s + %s are up, rage %d (+~%d from the auto): %s now, %s instead of the next Slam", first, second, free, incoming, first, second))
       end
-      pair = { first = first, second = second, at = now }
-      Cast(first, lead)
+      StartPair(first, second, now, lead, "pair")
       return
+    elseif Tracing() and PairSoon(mode) then
+      Dbg(string.format("PAIR: none affordable (rage %d, auto brings ~%d%s)", free, incoming, queuedName and ", HS queued" or ""))
     end
+  end
+
+  -- OVERPOWER alone in the next GCD slot, even a blocked one (it then costs
+  -- the next Slam: 5 rage instead of 15), when no pair took it
+  if CFG.OP_TAKE_BLOCKED and not pvp and not opener and not pair and (lead == 0 or NPQueues(false))
+     and TryOverpower(now, lead, rage, free, "next GCD slot") then
+    return
   end
   -- fast weapons: no slack (set above), a GCD that ends after the next Slam
   -- window would either clip the auto or cost that Slam (slow weapons keep GCD_SLACK)

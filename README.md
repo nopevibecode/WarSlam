@@ -329,14 +329,20 @@ When your target **dodges** (an auto, Bloodthirst, Whirlwind, Slam...),
 Overpower is usable for 5 seconds, in Battle Stance. WarSlam handles the
 stance dance, starting from Berserker Stance:
 
-1. In the next GCD slot, with Overpower off cooldown, it **swaps to Battle
-   Stance**. Swaps are off the GCD, and never happen during a Slam cast.
-   With a fast weapon, that slot usually costs the next Slam: Overpower
+1. Overpower is a strike like Bloodthirst and Whirlwind: it can replace any
+   GCD, and it **pairs with BT / MS or WW**, including the pair right after
+   the auto that goes before the Slam (auto, BT, Overpower, auto, Slam).
+   When your rage is above what a swap keeps, the other strike goes first
+   to spend it, then the swap and Overpower; when it's already low,
+   Overpower goes first. A pair only starts if the rage covers both
+   strikes and the swaps in between.
+2. With no pair to make, Overpower takes the **next GCD slot** on its own.
+   With a fast weapon that slot usually costs the next Slam: Overpower
    (5 rage) replaces it. Untick **...even if it costs the next Slam** to
-   only use slots that cost no Slam (and the Sunder build): far fewer
-   Overpowers, since your fast weapon rarely has such a slot.
-2. The next press casts **Overpower**.
-3. Then it **swaps back to Berserker Stance** (Whirlwind needs it).
+   only use slots that cost no Slam (and the Sunder build).
+3. Swaps are off the GCD and never happen during a Slam cast: **Battle
+   Stance**, the next press casts **Overpower**, then back to **Berserker
+   Stance** (Whirlwind needs it).
 
 A swap throws away the rage above what **Tactical Mastery** keeps (5 per
 point, read from your talents). WarSlam only swaps when that loss is within
@@ -361,6 +367,9 @@ In the simulator, with your weapon at 6% haste and 5/5 Tactical Mastery
 | 36 (raid) | 0 | 0.5 | 26.8 | 8 |
 | 36 (raid) | 10 | 1.2 | 27.2 | 14 |
 | 36 (raid) | 30 | 2.0 | 27.6 | 50 (fewer Heroic Strikes) |
+
+(Figures from before Overpower could pair; with pairs, Overpower per minute
+rises to about 2.0 at dummy rage, with strikes per minute unchanged.)
 
 The strike test counts Overpower with the other strikes.
 

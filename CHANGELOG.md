@@ -6,8 +6,8 @@
   Overpower, Bloodrage and pairs: Base 3.60 and Base 3.80 now queue Heroic
   Strike at 94 rage instead of 72 and use a 0.60 Slam window (+4% to +5% on
   average, up to +7% at high rage). Base 3.40 is back to the Auto window
-  (same as Base 3.50); fast weapons are otherwise unchanged. Applied once to
-  your existing base profiles.
+  (same as Base 3.50), and both fast profiles let a pair be at most 10 rage
+  short instead of 20 (+0.4%). Applied once to your existing base profiles.
 
 ## 1.1 — 2026-11-13
 

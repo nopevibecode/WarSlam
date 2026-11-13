@@ -277,8 +277,8 @@ variance:
 
 | Profile | Slam window | Slow weapon | Heroic Strike at | Gain over Auto / 72 (dummy / raid / heavy) |
 |---|---|---|---|---|
-| **Base 3.40** | Auto | Auto (= fast) | 72 | no change (see below) |
-| **Base 3.50** | Auto | Auto (= fast) | 72 | no change (see below) |
+| **Base 3.40** | Auto | Auto (= fast) | 72 | pair leeway 10 instead of 20: +0.4% (see below) |
+| **Base 3.50** | Auto | Auto (= fast) | 72 | pair leeway 10 instead of 20: +0.4% (see below) |
 | **Base 3.60** | 0.60 | Auto (= slow) | 94 | +1.1% / +5.6% / +5.6% |
 | **Base 3.80** | 0.60 | Auto (= slow) | 94 | +0.9% / +5.9% / +6.8% |
 
@@ -290,13 +290,18 @@ What the simulation found:
   comes in faster.
 - **Slow weapons: Slam window 0.60.** Starting a Slam a little later in the
   swing, even if it delays the next auto slightly, beats skipping it.
-- **Fast weapons (3.40, 3.50): unchanged.** With the fast rules (Slam trade,
-  BT + WW pairs) the Auto window never delays an auto and was as good as or
-  better than any fixed window, and the Heroic Strike threshold made no
-  measurable difference (pairs already spend the rage).
-- **Not speed-dependent:** Overpower's rage-loss limit and "...even if it
-  costs the next Slam" made no measurable difference, and pair settings stay
-  at their defaults.
+- **Fast weapons (3.40, 3.50): Auto window, Heroic Strike at 72, pairs at
+  most 10 rage short.** With the fast rules (Slam trade, BT + WW pairs) the
+  Auto window never delays an auto and was as good as or better than any
+  fixed window, and the Heroic Strike threshold made no measurable difference
+  (pairs already spend the rage). Letting a pair be 20 rage short cost about
+  0.4% (more late pairs, fewer Slams); 0 or 10 were equal.
+- **No measurable difference (under 0.3%, at every speed):** Overpower's
+  rage-loss limit (0 to 30), "...even if it costs the next Slam", "Stay in
+  Battle to dump rage", GCD slack (0 to 0.3s) and Heroic Strike near a pair
+  (90 to 100; 80–85 were slightly worse). Overpower as a whole is worth about
+  1%. The double-press lock can't be judged here: the simulator has no
+  network latency.
 
 Updating applies the new Slam window and Heroic Strike values to your
 existing base profiles once (other settings in them are kept), and to your

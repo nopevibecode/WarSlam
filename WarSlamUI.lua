@@ -126,12 +126,14 @@ local BASE_PROFILES = {
   -- Slow weapon rotation "auto": 3.40 / 3.50 are fast weapons (Slam trade, BT + WW pair),
   -- 3.60 / 3.80 slow ones. On slow ones, Heroic Strike only near the rage cap:
   -- the rage does more as Bloodthirst / Whirlwind / Slam.
-  ["Base 3.40"] = { speed = 3.40, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 72 },  -- fast rules: the window and threshold made no difference
-  ["Base 3.50"] = { speed = 3.50, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 72 },
+  -- fast weapons: the window and the Heroic Strike threshold made no difference;
+  -- pairs may be at most 10 rage short (20 cost ~0.4%: Slams lost to late pairs)
+  ["Base 3.40"] = { speed = 3.40, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 72, PAIR_RAGE = 10 },
+  ["Base 3.50"] = { speed = 3.50, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 72, PAIR_RAGE = 10 },
   ["Base 3.60"] = { speed = 3.60, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 94 },  -- +4.1% over "auto" / 72
   ["Base 3.80"] = { speed = 3.80, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 94 },  -- +4.6% over "auto" / 72
 }
-local BASE_KEYS = { "SLAM_FRAC", "SLOW_WEAPON", "ST_DUMP" }
+local BASE_KEYS = { "SLAM_FRAC", "SLOW_WEAPON", "ST_DUMP", "PAIR_RAGE" }
 
 local function CreateBaseProfiles()
   local v = WarSlamSettings.baseProfiles
@@ -139,16 +141,20 @@ local function CreateBaseProfiles()
     for name, b in pairs(BASE_PROFILES) do
       if not WarSlamSettings.profiles[name] then
         local p = Snapshot()
-        for i = 1, table.getn(BASE_KEYS) do p[BASE_KEYS[i]] = b[BASE_KEYS[i]] end
+        for i = 1, table.getn(BASE_KEYS) do
+          if b[BASE_KEYS[i]] ~= nil then p[BASE_KEYS[i]] = b[BASE_KEYS[i]] end
+        end
         WarSlamSettings.profiles[name] = p
       end
     end
-  elseif v < 4 then
-    -- version 3/4: re-tuned Slam window and Heroic Strike threshold (1.1).
+  elseif v < 5 then
+    -- version 3-5: re-tuned Slam window and Heroic Strike threshold (1.1).
     -- Version 1 also forced "Slow weapon rotation = Yes" in every base profile.
     for name, b in pairs(BASE_PROFILES) do
       local p = WarSlamSettings.profiles[name]
-      if p then for i = 1, table.getn(BASE_KEYS) do p[BASE_KEYS[i]] = b[BASE_KEYS[i]] end end
+      if p then for i = 1, table.getn(BASE_KEYS) do
+        if b[BASE_KEYS[i]] ~= nil then p[BASE_KEYS[i]] = b[BASE_KEYS[i]] end
+      end end
     end
     local act = WarSlamSettings.active
     if act and BASE_PROFILES[act] then
@@ -156,7 +162,7 @@ local function CreateBaseProfiles()
       Save()
     end
   end
-  WarSlamSettings.baseProfiles = 4
+  WarSlamSettings.baseProfiles = 5
 end
 
 -- base profile for a weapon speed, if one exists (and still exists)

@@ -105,6 +105,11 @@ GCD priority:
 | 4 | Whirlwind | |
 | Rage dump | Heroic Strike | Cleave |
 
+Battle Shout, once due, takes the **next GCD slot even if it costs a Slam**,
+ahead of strike pairs and trades: with a fast weapon most slots after a Slam
+are blocked, and waiting for a free one could let the buff drop. That's at
+most one Slam every 2 minutes.
+
 **Fury or Arms** is detected automatically: Bloodthirst if you have it,
 Mortal Strike otherwise. There's nothing to change after a respec.
 
@@ -355,7 +360,8 @@ point, read from your talents). WarSlam only swaps when that loss is within
 the **Rage a swap may lose** slider (default 0, so no loss). After the
 Overpower, if swapping back would throw rage away (an auto often lands while
 you're in Battle), WarSlam **stays in Battle to dump it** first: Bloodthirst
-/ Mortal Strike if it's ready, **Heroic Strike** (Cleave in multi target)
+/ Mortal Strike if it's ready (even when Whirlwind is due: WW follows right
+after the swap), **Heroic Strike** (Cleave in multi target)
 while your rage is at or above what Tactical Mastery keeps plus its cost
 (25 + 12 = 37 at 5/5 and 3/3 Improved Heroic Strike), and the usual Slam.
 It never stays more than 3 seconds, nor when Whirlwind is due. Untick **Stay

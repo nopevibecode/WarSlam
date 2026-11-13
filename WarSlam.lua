@@ -1419,6 +1419,15 @@ local function SwapBack(now, rage, free, dump)
   if not battleDoneAt then battleDoneAt = now end
   local keep = WarSlamRageKept()
   local loss = SwapLoss(rage)
+  -- Bloodthirst / Mortal Strike works in Battle: with rage a swap would lose,
+  -- it goes first, even when Whirlwind is due (WW follows after the swap)
+  local main = MainStrike()
+  if CFG.OP_STAY_BATTLE and loss > CFG.OP_RAGE_LOSS and main and Index(main)
+     and CD(main) <= 0.02 and free >= COST[main]() then
+    if Tracing() then Dbg(string.format("STANCE: %s before swapping back (a swap would lose %d)", main, loss)) end
+    Cast(main, 0)
+    return true
+  end
   -- stay to dump the rage the swap would throw away: never past OP_STAY_MAX,
   -- never when Whirlwind is due (it needs Berserker)
   -- Whirlwind due only counts if the rage left after the swap would pay for it
@@ -1432,14 +1441,7 @@ local function SwapBack(now, rage, free, dump)
     SwapTo("Berserker Stance", string.format("Overpower done, %d rage lost", loss))
     return true
   end
-  -- 1) Bloodthirst / Mortal Strike works in Battle: the rage becomes a strike
-  local main = MainStrike()
-  if main and Index(main) and CD(main) <= 0.02 and free >= COST[main]() then
-    if Tracing() then Dbg(string.format("STANCE: %s before swapping back (a swap would lose %d)", main, loss)) end
-    Cast(main, 0)
-    return true
-  end
-  -- 2) Heroic Strike / Cleave (off the GCD) while the rage stays above what a
+  -- Heroic Strike / Cleave (off the GCD) while the rage stays above what a
   --    swap keeps + its cost; it's spent when the next swing lands
   if not queuedName and dump and Index(dump) and free >= keep + COST[dump]() then
     if Tracing() then Dbg(string.format("STANCE: %s queued before swapping back (rage %d, a swap keeps %d)", dump, rage, keep)) end
@@ -1829,6 +1831,17 @@ local function Run(modeName)
   --    slam or a Windfury reset it isn't.
   local slamLatest = swing * slamFrac              -- slam must start with at least this much swing left
   local windowEnd = rem + swing - slamLatest       -- seconds from then until next swing's slam window closes
+
+  -- BATTLE SHOUT due (missing or 10s or less left): this GCD slot, even a
+  -- blocked one, before pairs and trades. With a fast weapon most slots are
+  -- blocked, and waiting for a free one let the buff drop.
+  if not pvp and CFG.USE_SHOUT and Index("Battle Shout") and Ready("Battle Shout", free, lead)
+     and R.ShoutTimeLeft() - lead <= CFG.SHOUT_REFRESH and (lead == 0 or NPQueues(false)) then
+    if Tracing() then Dbg(string.format("Battle Shout: %.1fs left, refreshed in this GCD slot", R.ShoutTimeLeft())) end
+    pair = nil
+    Cast("Battle Shout", lead)
+    return
+  end
 
   -- DEATH WISH armed by the macro: this GCD slot, whatever it costs
   if dwArmedAt and Index("Death Wish") and Ready("Death Wish", free, lead) and (lead == 0 or NPQueues(false)) then

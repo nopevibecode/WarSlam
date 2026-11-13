@@ -1404,6 +1404,128 @@ local function TradeIncoming(rem, lead)
   return inc
 end
 
+------------------------------------------------------------------------
+-- Small steps kept out of Run: the 1.12 client's Lua refuses a function
+-- that uses more than 60 of the file's locals (Run is close to that)
+------------------------------------------------------------------------
+-- back to Berserker once the Overpower is done or its window closed (off the
+-- GCD); optionally stay a little in Battle to spend rage. true = acted.
+local function SwapBack(now, rage)
+  if ActiveStance() ~= "Battle Stance" or OPUp(now, 1.0) then battleDoneAt = nil end
+  if not (CFG.USE_OVERPOWER and inCombat and not casting and ActiveStance() == "Battle Stance"
+     and not OPUp(now, 1.0) and StanceIndex("Berserker Stance") and StanceReady()) then return false end
+  if not battleDoneAt then battleDoneAt = now end
+  local loss = SwapLoss(rage)
+  -- optional: stay a little to spend the rage, never past OP_STAY_MAX or a due WW
+  local stay = CFG.OP_STAY_BATTLE and loss > CFG.OP_RAGE_LOSS and now - battleDoneAt < CFG.OP_STAY_MAX
+    and not (Index("Whirlwind") and CD("Whirlwind") <= 1.5)
+  if not stay then
+    SwapTo("Berserker Stance", string.format("Overpower done, %d rage lost", loss))
+    return true
+  end
+  if Tracing() then Dbg(string.format("STANCE: staying in Battle to spend rage (a swap would lose %d), %.1fs left", loss, CFG.OP_STAY_MAX - (now - battleDoneAt))) end
+  return false
+end
+
+-- in Battle Stance for an Overpower that's usable now: it goes on this press,
+-- before pairs and Slam (BT works in Battle too, and must not take its place)
+local function OverpowerInBattle(now, lead, free)
+  if not (CFG.USE_OVERPOWER and inCombat and ActiveStance() == "Battle Stance"
+     and OPUp(now, lead) and Ready("Overpower", free, lead) and (lead == 0 or NPQueues(false))) then return false end
+  if pair and pair.first == "Overpower" and not pair.sent then pair.sent = true
+  elseif pair and pair.second == "Overpower" then pair = nil end
+  if Tracing() then Dbg("OVERPOWER (in Battle Stance, before anything else)") end
+  Cast("Overpower", lead)
+  return true
+end
+
+-- just changed target: don't queue through Nampower (a queued spell keeps
+-- the target it was queued on); cast directly once the GCD / cast is over
+local function JustRetargeted(now)
+  if now - targetChangedAt >= CFG.TARGET_SETTLE then return false end
+  if Tracing() then Dbg("target just changed: no queueing, cast when ready") end
+  return true
+end
+
+-- fast weapon, the next GCD doesn't fit before the Slam window closes: trade
+-- that Slam for two strikes, if two are coming and both fit before the one after
+local function TryTrade(mode, lead, rem, swing, slamFrac, free, slack)
+  if SlowWeapon() then return end
+  local strikes = {}
+  for k = 1, table.getn(mode.gcds) do
+    local n = mode.gcds[k]
+    if n == "MAIN" then n = MainStrike() end
+    if n and (n == "Bloodthirst" or n == "Mortal Strike" or n == "Whirlwind") and Index(n) then
+      table.insert(strikes, n)
+    end
+  end
+  local first, second = nil, nil
+  for i = 1, table.getn(strikes) do
+    if not first and Ready(strikes[i], free, lead) then first = strikes[i] end
+  end
+  if first then
+    for i = 1, table.getn(strikes) do
+      local n = strikes[i]
+      if n ~= first and CD(n) <= lead + CFG.GCD + CFG.TRADE_SOON then second = n end
+    end
+  end
+  -- the trade only gains a strike if the 2nd one's GCD is also over before
+  -- the Slam window of the swing after (otherwise it costs that Slam too)
+  local fitsAfter = false
+  if second then
+    local secondStart = CFG.GCD
+    local cd2 = CD(second) - lead
+    if cd2 > secondStart then secondStart = cd2 end
+    local secondEnd = secondStart + CFG.GCD
+    local windowC = rem + swing + swing * (1 - slamFrac)  -- that Slam window closes then
+    fitsAfter = secondEnd - slack <= windowC
+  end
+  local rageOK = first and second and fitsAfter and
+    free >= COST[first]() + COST[second]() - TradeIncoming(rem, lead)
+  if Tracing() then
+    Dbg(string.format("TRADE check: now %s, next %s, fits before the following Slam: %s, rage %d -> %s",
+      tostring(first), tostring(second), fitsAfter and "yes" or "no", free,
+      rageOK and "trade the next Slam" or "no"))
+  end
+  if not rageOK then return end
+  Cast(first, lead)
+end
+
+-- Death Wish armed by the macro went off? Juju Flurry due?
+local function CooldownSteps(now)
+  DWCheck(now)
+  if not casting then UseJuju(now) end
+end
+
+-- helpers Run calls, in one table: the 1.12 Lua allows a function at most
+-- 60 outside locals (upvalues), and Run would go past that otherwise
+local R = {
+  ChoosePair = ChoosePair,
+  StartPair = StartPair,
+  StrikeUsable = StrikeUsable,
+  CastStrike = CastStrike,
+  TryOverpower = TryOverpower,
+  UtilityWanted = UtilityWanted,
+  PairSoon = PairSoon,
+  StrikeList = StrikeList,
+  CastSunder = CastSunder,
+  SunderTimeLeft = SunderTimeLeft,
+  ShoutTimeLeft = ShoutTimeLeft,
+  ModeHasSunder = ModeHasSunder,
+  WantSunder = WantSunder,
+  SunderStacks = SunderStacks,
+  SunderFull = SunderFull,
+  OpenerActive = OpenerActive,
+  InPvP = InPvP,
+  SwapBack = SwapBack,
+  OverpowerInBattle = OverpowerInBattle,
+  JustRetargeted = JustRetargeted,
+  TryTrade = TryTrade,
+  CooldownSteps = CooldownSteps,
+  UpdateSwing = UpdateSwing,
+  MainStrike = MainStrike,
+}
+
 local function Run(modeName)
   local mode = MODES[modeName]
   local np = NPActive()
@@ -1414,7 +1536,7 @@ local function Run(modeName)
     return
   end
 
-  UpdateSwing()                                 -- catch an auto that landed this very frame
+  R.UpdateSwing()                                 -- catch an auto that landed this very frame
   local now    = GetTime()
   local swing  = UnitAttackSpeed("player")      -- current speed, Flurry included
   local remSec, frac
@@ -1434,7 +1556,7 @@ local function Run(modeName)
   local hsAt = mode.dumpAt
   if pair then
     hsAt = hsAt + COST[pair.second]()            -- rage a pending pair still needs
-  elseif PairSoon(mode) and CFG.PAIR_HS_AT > hsAt then
+  elseif R.PairSoon(mode) and CFG.PAIR_HS_AT > hsAt then
     hsAt = CFG.PAIR_HS_AT                         -- keep the rage for the BT + WW pair
   end
   if not casting and not queuedName and rage >= mode.dumpAt and rage < hsAt and Index(mode.dump) and Tracing() then
@@ -1447,26 +1569,12 @@ local function Run(modeName)
   -- rage still free for GCD abilities once the queued strike is paid for
   local free = rage
   if queuedName then free = rage - COST[queuedName]() end
-  DWCheck(now)
-  if not casting then UseJuju(now) end
+  R.CooldownSteps(now)
 
   -- STANCE: back to Berserker once the Overpower is done or its window closed
   -- (off the GCD). If that would throw away more rage than OP_RAGE_LOSS, stay
   -- in Battle and spend it first (Slam, BT, HS work there), unless WW is due.
-  if ActiveStance() ~= "Battle Stance" or OPUp(now, 1.0) then battleDoneAt = nil end
-  if CFG.USE_OVERPOWER and inCombat and not casting and ActiveStance() == "Battle Stance"
-     and not OPUp(now, 1.0) and StanceIndex("Berserker Stance") and StanceReady() then
-    if not battleDoneAt then battleDoneAt = now end
-    local loss = SwapLoss(rage)
-    -- optional: stay a little to spend the rage, never past OP_STAY_MAX or a due WW
-    local stay = CFG.OP_STAY_BATTLE and loss > CFG.OP_RAGE_LOSS and now - battleDoneAt < CFG.OP_STAY_MAX
-      and not (Index("Whirlwind") and CD("Whirlwind") <= 1.5)
-    if not stay then
-      SwapTo("Berserker Stance", string.format("Overpower done, %d rage lost", loss))
-      return
-    end
-    if Tracing() then Dbg(string.format("STANCE: staying in Battle to spend rage (a swap would lose %d), %.1fs left", loss, CFG.OP_STAY_MAX - (now - battleDoneAt))) end
-  end
+  if R.SwapBack(now, rage) then return end
 
   local gcd = CD("Slam")
   if gcd == 999 then
@@ -1489,10 +1597,7 @@ local function Run(modeName)
   end
   -- just changed target: don't queue through Nampower (a queued spell keeps
   -- the target it was queued on); cast directly once the GCD / cast is over
-  if lead > 0 and now - targetChangedAt < CFG.TARGET_SETTLE then
-    if Tracing() then Dbg("target just changed: no queueing, cast when ready") end
-    return
-  end
+  if lead > 0 and R.JustRetargeted(now) then return end
   if lead > 0.005 then
     -- Nampower: we'll queue. A key press can replace the queued spell, so no lock.
   else
@@ -1526,8 +1631,8 @@ local function Run(modeName)
     slammed = false
   end
   local fr = rem / swing
-  local pvp = CFG.PVP_BASIC and InPvP()
-  local opener = OpenerActive() and not crossesAuto and not pvp
+  local pvp = CFG.PVP_BASIC and R.InPvP()
+  local opener = R.OpenerActive() and not crossesAuto and not pvp
 
   if Tracing() then
     Dbg(string.format("[%s%s] st=%.2f (%d%% of swing left) rem=%.2fs slamCast=%.2fs slamFrac=%.3f swing=%.2f rage=%d free=%d queued=%s slammed=%s%s",
@@ -1539,23 +1644,16 @@ local function Run(modeName)
   -- 0a) IN BATTLE STANCE FOR OVERPOWER: the swap was made for it, so it goes
   --     on this press, before pairs and Slam (BT works in Battle too, and
   --     must not take its place)
-  if CFG.USE_OVERPOWER and not pvp and inCombat and ActiveStance() == "Battle Stance"
-     and OPUp(now, lead) and Ready("Overpower", free, lead) and (lead == 0 or NPQueues(false)) then
-    if pair and pair.first == "Overpower" and not pair.sent then pair.sent = true
-    elseif pair and pair.second == "Overpower" then pair = nil end
-    if Tracing() then Dbg("OVERPOWER (in Battle Stance, before anything else)") end
-    Cast("Overpower", lead)
-    return
-  end
+  if not pvp and R.OverpowerInBattle(now, lead, free) then return end
 
   -- 0b) SUNDER ABOUT TO FALL OFF: goes before everything, Slam included.
   --     Losing 5 stacks costs far more than one Slam.
-  if not pvp and CFG.USE_SUNDER and ModeHasSunder(mode) and Index("Sunder Armor") and SunderFull() then
-    local left = SunderTimeLeft(now + lead)
+  if not pvp and CFG.USE_SUNDER and R.ModeHasSunder(mode) and Index("Sunder Armor") and R.SunderFull() then
+    local left = R.SunderTimeLeft(now + lead)
     if left and left <= CFG.SUNDER_URGENT then
       if Ready("Sunder Armor", free, lead) and (lead == 0 or NPQueues(false)) then
         if Tracing() then Dbg(string.format("URGENT Sunder: %.1fs left", left)) end
-        CastSunder(now, lead)
+        R.CastSunder(now, lead)
         return
       elseif free < COST["Sunder Armor"]() then
         -- keep the rage for it rather than spending it on Slam
@@ -1572,18 +1670,18 @@ local function Run(modeName)
       pair = nil
     elseif not pair.sent then
       -- the 1st strike still has to go out (a stance swap came first)
-      if StrikeUsable(pair.first, now, lead, rage, free) then
+      if R.StrikeUsable(pair.first, now, lead, rage, free) then
         if lead == 0 or NPQueues(false) then
-          if CastStrike(pair.first, lead, "pair") == "cast" then pair.sent = true end
+          if R.CastStrike(pair.first, lead, "pair") == "cast" then pair.sent = true end
         end
         return
       end
       if Tracing() then Dbg("PAIR: " .. pair.first .. " no longer usable: pair dropped") end
       pair = nil
     elseif CD(pair.first) > CFG.GCD + 0.1 then          -- its own cooldown runs: it was cast
-      if StrikeUsable(pair.second, now, lead, rage, free) and (lead == 0 or NPQueues(false)) then
+      if R.StrikeUsable(pair.second, now, lead, rage, free) and (lead == 0 or NPQueues(false)) then
         local n = pair.second
-        local res = CastStrike(n, lead, "pair")
+        local res = R.CastStrike(n, lead, "pair")
         if res == "cast" then
           pair = nil
           if Tracing() then Dbg("PAIR: " .. n .. " instead of the Slam") end
@@ -1605,11 +1703,11 @@ local function Run(modeName)
   --     back to back. BT / WW when ready (they chain with Sunder without
   --     the Slam cast in between), Sunder in the other slots.
   local building = CFG.SUNDER_BUILD_GCD and not pvp and not opener and inCombat and CFG.USE_SUNDER
-     and ModeHasSunder(mode) and SunderFull() and Index("Sunder Armor")
-     and UnitExists("target") and not UnitIsDead("target") and SunderStacks() < 5
+     and R.ModeHasSunder(mode) and R.SunderFull() and Index("Sunder Armor")
+     and UnitExists("target") and not UnitIsDead("target") and R.SunderStacks() < 5
      and build.off ~= UnitName("target")
   if building then
-    local stacks = SunderStacks()
+    local stacks = R.SunderStacks()
     if not build.since then build.since = now end
     -- did my last build Sunder add a stack?
     if build.sunderAt and now - build.sunderAt > 1.0 then
@@ -1633,27 +1731,27 @@ local function Run(modeName)
       Cast("Death Wish", lead)
       return
     end
-    if TryOverpower(now, lead, rage, free, "Sunder build") then return end
+    if R.TryOverpower(now, lead, rage, free, "Sunder build") then return end
     if Index("Battle Shout") and Ready("Battle Shout", free, lead) and CFG.USE_SHOUT
-       and ShoutTimeLeft() - lead <= CFG.SHOUT_REFRESH then
+       and R.ShoutTimeLeft() - lead <= CFG.SHOUT_REFRESH then
       if Tracing() then Dbg("BUILD: Battle Shout") end
       Cast("Battle Shout", lead)
       return
     end
-    local strikes = StrikeList(mode)
+    local strikes = R.StrikeList(mode)
     -- a strike only if it leaves the rage for the next Sunder
     local keepSunder = COST["Sunder Armor"]()
     for i = 1, table.getn(strikes) do
       if Ready(strikes[i], free - keepSunder, lead) then
-        if Tracing() then Dbg(string.format("BUILD (%d Sunder): %s instead of a Slam", SunderStacks(), strikes[i])) end
+        if Tracing() then Dbg(string.format("BUILD (%d Sunder): %s instead of a Slam", R.SunderStacks(), strikes[i])) end
         Cast(strikes[i], lead)
         return
       end
     end
     if Ready("Sunder Armor", free, lead) then
-      if Tracing() then Dbg(string.format("BUILD (%d Sunder): Sunder Armor", SunderStacks())) end
-      if not build.sunderAt then build.sunderAt, build.before = now + lead, SunderStacks() end
-      CastSunder(now, lead)
+      if Tracing() then Dbg(string.format("BUILD (%d Sunder): Sunder Armor", R.SunderStacks())) end
+      if not build.sunderAt then build.sunderAt, build.before = now + lead, R.SunderStacks() end
+      R.CastSunder(now, lead)
       return
     end
     if Tracing() then Dbg(string.format("BUILD: waiting for rage (free=%d)", free)) end
@@ -1669,16 +1767,16 @@ local function Run(modeName)
   --     like any pair, but the strikes go out a swing earlier.
   if not opener and not slammed and fr > slamFrac and CFG.PAIR_STRIKES and not SlowWeapon()
      and not pair and not dwArmedAt and not autoPending and (lead == 0 or NPQueues(false))
-     and not UtilityWanted(mode, opener, pvp, now, lead, free, false) then
+     and not R.UtilityWanted(mode, opener, pvp, now, lead, free, false) then
     local nextClose = rem + swing * (1 - slamFrac)    -- next swing's Slam window closes
     if lead + 2 * CFG.GCD <= nextClose then
-      local first, second = ChoosePair(mode, now, lead, rage, free, 0, pvp)
+      local first, second = R.ChoosePair(mode, now, lead, rage, free, 0, pvp)
       if first then
         if Tracing() then
           Dbg(string.format("PAIR NOW: %s + %s up, rage %d: both before the next auto (done in %.2fs, next Slam window closes in %.2fs), Slam after it",
             first, second, free, lead + 2 * CFG.GCD, nextClose))
         end
-        StartPair(first, second, now, lead, "pair now")
+        R.StartPair(first, second, now, lead, "pair now")
         return
       end
     end
@@ -1726,25 +1824,25 @@ local function Run(modeName)
   if not SlowWeapon() then slack = 0 end
   local gcdFits = CFG.GCD - slack <= windowEnd
   local afterSlam = (lastGcdName == "Slam" and slammed) or gcdFits
-  if not afterSlam and not pair and not opener and Tracing() and PairSoon(mode) then
+  if not afterSlam and not pair and not opener and Tracing() and R.PairSoon(mode) then
     Dbg("PAIR: not after a Slam (last GCD: " .. tostring(lastGcdName) .. ") and BT/WW would cost this Slam too: wait for the next Slam")
   end
   if CFG.PAIR_STRIKES and not SlowWeapon() and not opener and not pair and afterSlam
-     and (lead == 0 or NPQueues(false)) and not UtilityWanted(mode, opener, pvp, now, lead, free, gcdFits) then
+     and (lead == 0 or NPQueues(false)) and not R.UtilityWanted(mode, opener, pvp, now, lead, free, gcdFits) then
     -- rage that comes in before the 2nd strike: the auto in between, if it
     -- lands in time and no HS / Cleave replaces it (capped by PAIR_RAGE)
     local incoming = 0
     if not queuedName and rem < lead + CFG.GCD + 0.3 then incoming = math.floor(autoRage - autoDev / 2) end
     if incoming < 0 then incoming = 0 end
     if incoming > CFG.PAIR_RAGE then incoming = CFG.PAIR_RAGE end
-    local first, second = ChoosePair(mode, now, lead, rage, free, incoming, pvp)
+    local first, second = R.ChoosePair(mode, now, lead, rage, free, incoming, pvp)
     if first then
       if Tracing() then
         Dbg(string.format("PAIR: %s + %s are up, rage %d (+~%d from the auto): %s now, %s instead of the next Slam", first, second, free, incoming, first, second))
       end
-      StartPair(first, second, now, lead, "pair")
+      R.StartPair(first, second, now, lead, "pair")
       return
-    elseif Tracing() and PairSoon(mode) then
+    elseif Tracing() and R.PairSoon(mode) then
       Dbg(string.format("PAIR: none affordable (rage %d, auto brings ~%d%s)", free, incoming, queuedName and ", HS queued" or ""))
     end
   end
@@ -1752,7 +1850,7 @@ local function Run(modeName)
   -- OVERPOWER alone in the next GCD slot, even a blocked one (it then costs
   -- the next Slam: 5 rage instead of 15), when no pair took it
   if CFG.OP_TAKE_BLOCKED and not pvp and not opener and not pair and (lead == 0 or NPQueues(false))
-     and TryOverpower(now, lead, rage, free, "next GCD slot") then
+     and R.TryOverpower(now, lead, rage, free, "next GCD slot") then
     return
   end
   -- fast weapons: no slack (set above), a GCD that ends after the next Slam
@@ -1769,72 +1867,34 @@ local function Run(modeName)
     if Tracing() then Dbg(string.format("swing stalled for %.1fs: GCD abilities allowed", now - zeroSince)) end
   elseif CFG.GCD - slack > windowEnd then
     -- boss, still under 5 Sunders: a Sunder may take this slot (costs the Slam)
-    if not pvp and CFG.USE_SUNDER and ModeHasSunder(mode) and SunderFull() and SunderStacks() < 5
-       and Index("Sunder Armor") and Ready("Sunder Armor", free, lead) and WantSunder(now) then
-      if Tracing() then Dbg(string.format("SUNDER build (%d stacks): takes the blocked slot", SunderStacks())) end
-      CastSunder(now, lead)
+    if not pvp and CFG.USE_SUNDER and R.ModeHasSunder(mode) and R.SunderFull() and R.SunderStacks() < 5
+       and Index("Sunder Armor") and Ready("Sunder Armor", free, lead) and R.WantSunder(now) then
+      if Tracing() then Dbg(string.format("SUNDER build (%d stacks): takes the blocked slot", R.SunderStacks())) end
+      R.CastSunder(now, lead)
       return
     end
     -- doesn't fit: trade the next Slam for two strikes, if two are coming
-    if SlowWeapon() then return end
-    local strikes = {}
-    for k = 1, table.getn(mode.gcds) do
-      local n = mode.gcds[k]
-      if n == "MAIN" then n = MainStrike() end
-      if n and (n == "Bloodthirst" or n == "Mortal Strike" or n == "Whirlwind") and Index(n) then
-        table.insert(strikes, n)
-      end
-    end
-    local first, second = nil, nil
-    for i = 1, table.getn(strikes) do
-      if not first and Ready(strikes[i], free, lead) then first = strikes[i] end
-    end
-    if first then
-      for i = 1, table.getn(strikes) do
-        local n = strikes[i]
-        if n ~= first and CD(n) <= lead + CFG.GCD + CFG.TRADE_SOON then second = n end
-      end
-    end
-    -- the trade only gains a strike if the 2nd one's GCD is also over before
-    -- the Slam window of the swing after (otherwise it costs that Slam too)
-    local fitsAfter = false
-    if second then
-      local secondStart = CFG.GCD
-      local cd2 = CD(second) - lead
-      if cd2 > secondStart then secondStart = cd2 end
-      local secondEnd = secondStart + CFG.GCD
-      local windowC = rem + swing + swing * (1 - slamFrac)  -- that Slam window closes then
-      fitsAfter = secondEnd - slack <= windowC
-    end
-    local rageOK = first and second and fitsAfter and
-      free >= COST[first]() + COST[second]() - TradeIncoming(rem, lead)
-    if Tracing() then
-      Dbg(string.format("TRADE check: now %s, next %s, fits before the following Slam: %s, rage %d -> %s",
-        tostring(first), tostring(second), fitsAfter and "yes" or "no", free,
-        rageOK and "trade the next Slam" or "no"))
-    end
-    if not rageOK then return end
-    Cast(first, lead)
+    R.TryTrade(mode, lead, rem, swing, slamFrac, free, slack)
     return
   end
 
   for k = 1, table.getn(mode.gcds) do
     local name = mode.gcds[k]
-    if name == "MAIN" then name = MainStrike() end
-    if name == "Sunder Armor" and (pvp or not (opener or (CFG.USE_SUNDER and SunderFull()))) then name = nil end
+    if name == "MAIN" then name = R.MainStrike() end
+    if name == "Sunder Armor" and (pvp or not (opener or (CFG.USE_SUNDER and R.SunderFull()))) then name = nil end
     if name == "Battle Shout" and pvp then name = nil end
     if name == "Overpower" then
-      if not pvp and TryOverpower(now, lead, rage, free, "free GCD slot") then return end
+      if not pvp and R.TryOverpower(now, lead, rage, free, "free GCD slot") then return end
       name = nil
     end
     if name == "Battle Shout" then
-      local left = ShoutTimeLeft() - lead
+      local left = R.ShoutTimeLeft() - lead
       if not ((CFG.USE_SHOUT and left <= CFG.SHOUT_REFRESH) or (opener and left <= CFG.OPENER_SHOUT)) then name = nil end
     end
     if name and Index(name) and Ready(name, free, lead) then
       if name == "Sunder Armor" then
-        if WantSunder(now) then
-          CastSunder(now, lead)
+        if R.WantSunder(now) then
+          R.CastSunder(now, lead)
           return
         end
       else
@@ -1844,9 +1904,9 @@ local function Run(modeName)
     end
   end
   -- not a boss: Sunder as an opportunity, when a damage strike is up but short of rage
-  if not pvp and CFG.USE_SUNDER and not opener and not SunderFull() and ModeHasSunder(mode)
-     and Index("Sunder Armor") and Ready("Sunder Armor", free, lead) and WantSunder(now) then
-    local strikes = StrikeList(mode)
+  if not pvp and CFG.USE_SUNDER and not opener and not R.SunderFull() and R.ModeHasSunder(mode)
+     and Index("Sunder Armor") and Ready("Sunder Armor", free, lead) and R.WantSunder(now) then
+    local strikes = R.StrikeList(mode)
     for i = 1, table.getn(strikes) do
       local n = strikes[i]
       -- the auto before the next GCD slot must still pay for the strike after the Sunder
@@ -1855,7 +1915,7 @@ local function Run(modeName)
       if CD(n) <= lead + 0.05 and free < COST[n]()
          and free - COST["Sunder Armor"]() + incoming >= COST[n]() then
         if Tracing() then Dbg(string.format("SUNDER opportunity: %s up but %d rage < %d", n, free, COST[n]())) end
-        CastSunder(now, lead)
+        R.CastSunder(now, lead)
         return
       end
     end

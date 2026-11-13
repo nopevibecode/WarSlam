@@ -937,6 +937,11 @@ opportunity strike when BT / WW are up but short of rage.
 - **5 stacks, 8s or less left (`SUNDER_REFRESH`):** refreshed in the next
   GCD slot, as the first GCD ability after Battle Shout. It never costs a
   Slam.
+- **5 stacks, 15s or less left (`SUNDER_HOLE`), in a hole:** when a GCD
+  slot is free but nothing else can use it (Bloodthirst and Whirlwind on
+  cooldown for the whole GCD, typically the swing after a pair), the refresh
+  goes there early, so it doesn't take another strike's slot later. Only if
+  the next auto still pays for the next Slam.
 - **4s or less left (`SUNDER_URGENT`):** the safety net, for when no GCD slot
   came up in time (rage, procs, a GCD blocked by the timing rule). Sunder
   goes before everything, Slam included.
@@ -1062,6 +1067,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `USE_SUNDER` | on with Nampower | window | Sunder in the single target rotation (§7). Also turns on tracking of other players' Sunders. |
 | `SUNDER_URGENT` | 4 | `/run` | Seconds left at which Sunder goes before everything. |
 | `SUNDER_REFRESH` | 8 | `/run` | Seconds left at which a 5-stack is refreshed in the next GCD slot (0 = leave it to the urgent rule). |
+| `SUNDER_HOLE` | 15 | `/run` | Seconds left at which a 5-stack may be refreshed early in a GCD slot nothing else can use (0 = off). 20 refreshed too often in the simulator (−1%). |
 | `SUNDER_DUR` | 30 | `/run` | Sunder duration. |
 | `USE_SHOUT` | on | window | Keep Battle Shout up. |
 | `SHOUT_REFRESH` | 10 | `/run` | Seconds left at which Battle Shout is recast. |

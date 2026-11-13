@@ -55,6 +55,7 @@ local CFG = {
 
   SUNDER_DUR     = 30,   -- Sunder Armor duration
   SUNDER_REFRESH = 8,    -- 5 stacks with this many seconds (or fewer) left: refresh it in the next GCD slot
+  SUNDER_HOLE    = 15,   -- 5 stacks with this many seconds (or fewer) left: refresh it in a GCD slot nothing else can use (0 = off; 20 refreshed too often in the simulator)
                          -- (first GCD ability after Battle Shout); 0 = leave it to the urgent rule below
   SUNDER_URGENT  = 4,    -- this many seconds (or fewer) left: Sunder goes before everything, Slam included
   USE_SUNDER     = false, -- single target: include Sunder Armor in the GCD priority (bosses: full rules, other mobs: opportunity only). New installs and the Defaults button turn it on when Nampower is in use
@@ -2081,6 +2082,27 @@ local function Run(modeName)
         R.CastSunder(now, lead)
         return
       end
+    end
+  end
+  -- a hole: free GCD slot, nothing else usable. Refresh a full Sunder stack
+  -- early here, so the refresh doesn't take another strike's slot later,
+  -- as long as the next auto still pays for the next Slam
+  if not pvp and CFG.USE_SUNDER and CFG.SUNDER_HOLE > 0 and not opener and R.SunderFull()
+     and R.ModeHasSunder(mode) and R.SunderStacks() >= 5 and Index("Sunder Armor")
+     and Ready("Sunder Armor", free, lead) then
+    local left = R.SunderTimeLeft(now + lead)
+    local incoming = queuedName and 0 or math.floor(autoRage - autoDev / 2)
+    -- a real hole: no damage strike comes back before this GCD is over
+    local soon = false
+    local strikes = R.StrikeList(mode)
+    for i = 1, table.getn(strikes) do
+      if Index(strikes[i]) and CD(strikes[i]) <= lead + CFG.GCD then soon = true end
+    end
+    if left and left <= CFG.SUNDER_HOLE and not soon
+       and free - COST["Sunder Armor"]() + incoming >= COST["Slam"]() then
+      if Tracing() then Dbg(string.format("SUNDER refresh in a hole: %.1fs left, rage %d", left, free)) end
+      R.CastSunder(now, lead)
+      return
     end
   end
   if Tracing() then Dbg("no GCD ability ready (cooldown or rage: free=" .. free .. ")") end

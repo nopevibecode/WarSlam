@@ -20,6 +20,10 @@
   takes a slot that costs the next Slam if the stance swap loses no rage;
   otherwise it waits for a pair with Bloodthirst or Whirlwind (two strikes
   for the Slam).
+- **Sunder refresh in rotation holes:** a GCD slot nothing else can use (both
+  Bloodthirst and Whirlwind on cooldown, typically the swing after a pair)
+  now refreshes a full Sunder stack early, when it has 15s or less left
+  (`SUNDER_HOLE`), so the refresh doesn't take another strike's slot later.
 
 ## 1.1 — 2026-11-13
 

@@ -1465,6 +1465,18 @@ local function Run(modeName)
       (lead > 0) and string.format(" | NP queue in %.2fs: %d%% left then", lead, math.floor(fr * 100)) or ""))
   end
 
+  -- 0a) IN BATTLE STANCE FOR OVERPOWER: the swap was made for it, so it goes
+  --     on this press, before pairs and Slam (BT works in Battle too, and
+  --     must not take its place)
+  if CFG.USE_OVERPOWER and not pvp and inCombat and ActiveStance() == "Battle Stance"
+     and OPUp(now, lead) and Ready("Overpower", free, lead) and (lead == 0 or NPQueues(false)) then
+    if pair and pair.first == "Overpower" and not pair.sent then pair.sent = true
+    elseif pair and pair.second == "Overpower" then pair = nil end
+    if Tracing() then Dbg("OVERPOWER (in Battle Stance, before anything else)") end
+    Cast("Overpower", lead)
+    return
+  end
+
   -- 0b) SUNDER ABOUT TO FALL OFF: goes before everything, Slam included.
   --     Losing 5 stacks costs far more than one Slam.
   if not pvp and CFG.USE_SUNDER and ModeHasSunder(mode) and Index("Sunder Armor") and SunderFull() then

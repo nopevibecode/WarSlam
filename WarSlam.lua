@@ -80,6 +80,7 @@ local CFG = {
   JUJU_NAME      = "Juju Flurry",
   USE_OVERPOWER  = true,  -- Overpower after a dodge, dancing Berserker -> Battle -> Berserker
   OP_RAGE_LOSS   = 0,     -- rage a stance swap may throw away (above what Tactical Mastery keeps)
+  OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
   OP_STAY_BATTLE = false, -- after Overpower, stay in Battle to spend rage before swapping back
   OP_STAY_MAX    = 3,     -- ...but never longer than this many seconds
   OP_COST        = 5,
@@ -1513,6 +1514,14 @@ local function Run(modeName)
     if Tracing() then Dbg("DW: Death Wish (armed) in this GCD slot") end
     pair = nil
     Cast("Death Wish", lead)
+    return
+  end
+
+  -- OVERPOWER in the next GCD slot, even a blocked one (it then costs the
+  -- next Slam: 5 rage instead of 15), before pairs and trades
+  if CFG.OP_TAKE_BLOCKED and not pvp and not opener and (lead == 0 or NPQueues(false))
+     and TryOverpower(now, lead, rage, free, "next GCD slot") then
+    pair = nil
     return
   end
 

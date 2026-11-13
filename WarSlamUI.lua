@@ -18,7 +18,7 @@ end
 local PROFILE_KEYS = { "SLAM_FRAC", "GCD_SLACK", "CAST_LOCK", "USE_SUNDER", "USE_SHOUT",
   "OPENER", "OPENER_ANY", "SLOW_WEAPON", "PVP_BASIC", "ST_DUMP", "MT_DUMP", "USE_NAMPOWER", "NP_LEAD",
   "PAIR_STRIKES", "PAIR_RAGE", "PAIR_HS_AT", "SUNDER_ANY", "SUNDER_BUILD_GCD", "DW_JUJU", "DW_JUJU_DELAY",
-  "USE_OVERPOWER", "OP_RAGE_LOSS", "OP_STAY_BATTLE" }
+  "USE_OVERPOWER", "OP_RAGE_LOSS", "OP_STAY_BATTLE", "OP_TAKE_BLOCKED" }
 local OTHER_KEYS = { "MINIMAP_SHOW", "MINIMAP_ANGLE" }
 
 local function Get(k)
@@ -354,7 +354,7 @@ local function Head(x, y, text)
   return t
 end
 
-local W, H = 600, 530
+local W, H = 600, 560
 local C1, C2 = 30, 315       -- the two columns of every tab
 local TOP = -112             -- where tab content starts
 
@@ -561,19 +561,23 @@ local function Build()
   MakeCheck("Overpower", "Overpower (stance dance)", C2 - 4, y - 20,
     function() return CFG.USE_OVERPOWER end,
     function(on) CFG.USE_OVERPOWER = on end,
-    "After your target dodges, in a GCD slot that costs no Slam\n(or during the Sunder build): swap to Battle Stance,\nOverpower, swap back to Berserker. Swaps are off the GCD.\nSkipped when a swap would lose more rage than the slider.")
-  MakeSlider("OpLoss", "Rage a swap may lose", 0, 30, 5, "%d", C2, y - 64,
+    "After your target dodges: swap to Battle Stance,\nOverpower, swap back to Berserker. Swaps are off the GCD.\nSkipped when a swap would lose more rage than the slider.")
+  MakeCheck("OpBlocked", "...even if it costs the next Slam", C2 - 4, y - 44,
+    function() return CFG.OP_TAKE_BLOCKED end,
+    function(on) CFG.OP_TAKE_BLOCKED = on end,
+    "On: Overpower takes the next GCD slot, before BT + WW\npairs, even when that slot costs the next Slam\n(5 rage instead of 15).\nOff: only in slots that cost no Slam, or the Sunder build.")
+  MakeSlider("OpLoss", "Rage a swap may lose", 0, 30, 5, "%d", C2, y - 88,
     function() return CFG.OP_RAGE_LOSS end,
     function(v) CFG.OP_RAGE_LOSS = v end,
     "0 = only swap when your rage fits in what Tactical\nMastery keeps (5 per point).")
-  MakeCheck("OpStay", "Stay in Battle to spend rage", C2 - 4, y - 92,
+  MakeCheck("OpStay", "Stay in Battle to spend rage", C2 - 4, y - 116,
     function() return CFG.OP_STAY_BATTLE end,
     function(on) CFG.OP_STAY_BATTLE = on end,
     "Off: back to Berserker right after Overpower,\neven if the swap loses rage.\nOn: stay in Battle to spend the rage first (Slam,\nBT, HS work there), at most 3s, or until WW is due.")
-  local tmLabel = Label(C2, y - 116, "GameFontHighlightSmall", 250)
+  local tmLabel = Label(C2 + 76, y - 2, "GameFontHighlightSmall", 200)
   frame.RefreshTM = function()
     local kept, pts = WarSlamRageKept()
-    tmLabel:SetText(string.format("Tactical Mastery %d/5: a swap keeps |cffffd000%d rage|r", pts or 0, kept))
+    tmLabel:SetText(string.format("Tactical Mastery %d/5: keeps |cffffd000%d|r", pts or 0, kept))
   end
 
   ----------------------------------------------------------------------

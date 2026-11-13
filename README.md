@@ -329,9 +329,12 @@ When your target **dodges** (an auto, Bloodthirst, Whirlwind, Slam...),
 Overpower is usable for 5 seconds, in Battle Stance. WarSlam handles the
 stance dance, starting from Berserker Stance:
 
-1. In a GCD slot that costs no Slam (or during the Sunder build), with
-   Overpower off cooldown, it **swaps to Battle Stance**. Swaps are off the
-   GCD, and never happen during a Slam cast.
+1. In the next GCD slot, with Overpower off cooldown, it **swaps to Battle
+   Stance**. Swaps are off the GCD, and never happen during a Slam cast.
+   With a fast weapon, that slot usually costs the next Slam: Overpower
+   (5 rage) replaces it. Untick **...even if it costs the next Slam** to
+   only use slots that cost no Slam (and the Sunder build): far fewer
+   Overpowers, since your fast weapon rarely has such a slot.
 2. The next press casts **Overpower**.
 3. Then it **swaps back to Berserker Stance** (Whirlwind needs it).
 
@@ -441,6 +444,7 @@ or slow). Below that, three tabs:
 | Boss opener | Battle Shout and Sunder before the 2nd auto (see *Boss opener*). | on |
 | PvP: only Slam + BT / MS / WW | In battlegrounds or against enemy players: no Battle Shout, Sunder or opener. | on |
 | Overpower (stance dance) | After a dodge: Battle Stance, Overpower, back to Berserker (see *Overpower and stance dancing*). | on |
+| ...even if it costs the next Slam | Overpower takes the next GCD slot, before BT + WW pairs, even when that costs the next Slam. Off: only slots that cost no Slam. | on |
 | Rage a swap may lose | Rage the swap *to* Battle may throw away above what Tactical Mastery keeps (0–30). | 0 |
 | Stay in Battle to spend rage | After Overpower, stay in Battle up to 3s to spend rage before swapping back. Off: swap back straight away. | off |
 
@@ -925,6 +929,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `PAIR_RAGE` | 0 | window | How much rage short of both costs the pair may start (0 = both affordable now). Capped by the measured rage per auto, and 0 when a Heroic Strike is queued. |
 | `USE_OVERPOWER` | on | window | Overpower after a dodge, with the stance dance. |
 | `OP_RAGE_LOSS` | 0 | window | Rage a stance swap may throw away above what Tactical Mastery keeps. |
+| `OP_TAKE_BLOCKED` | on | window | Overpower may take a slot that costs the next Slam. |
 | `OP_STAY_BATTLE` | off | window | Stay in Battle after Overpower to spend rage first. |
 | `OP_STAY_MAX` | 3 | `/run` | Longest stay in Battle when that's on. |
 | `OP_WINDOW` | 5 | `/run` | How long Overpower stays usable after a dodge. |

@@ -392,6 +392,27 @@ rises to about 2.0 at dummy rage, with strikes per minute unchanged.)
 
 The strike test counts Overpower with the other strikes.
 
+## Bloodrage for pairs
+
+When a strike pair (BT / MS, WW, Overpower) is short of rage by no more than
+the 10 Bloodrage gives at once, WarSlam can fire **Bloodrage** to complete
+it: before the pair starts, or when its 2nd strike comes and the rage came
+up short. If that strike needs a stance swap (Overpower into Battle,
+Whirlwind back into Berserker), the swap goes **first** and Bloodrage after
+it, since a swap would throw Bloodrage's rage away. Bloodrage is off the GCD;
+its rage arrives a moment later, so the strike goes on the next press.
+
+Setting **Bloodrage for pairs** (Rotation tab, Cooldowns):
+
+- **Off**: never.
+- **With Death Wish** (default): only while Death Wish is active or on
+  cooldown, so Bloodrage is kept for your Death Wish window otherwise.
+- **Always**: whenever it's off cooldown.
+
+Never below 30% health (Bloodrage costs health). In the simulator at dummy
+rage it fires about once a minute (its cooldown) and turns about one Slam a
+minute into a Bloodthirst or Whirlwind, for the same strikes per minute.
+
 ## Sunder Armor (optional)
 
 When it's enabled, the full rules below apply to **bosses** (skull level or
@@ -465,6 +486,7 @@ or slow). Below that, three tabs:
 | Heroic Strike cost | Shown, not set: read from your talents (15, minus 1 per Improved Heroic Strike point, so 12 at 3/3). | auto |
 | Juju Flurry after Death Wish | After `/run WarSlamDW()`, use a Juju Flurry from your bags (see *Death Wish*). | on |
 | Juju Flurry delay | Seconds between Death Wish and the Juju Flurry (5–15). | 9 |
+| Bloodrage for pairs | Off / With Death Wish / Always: Bloodrage to complete a pair short of rage (see *Bloodrage for pairs*). | With Death Wish |
 | Slow weapon rotation | Auto / Yes / No: whether trading a Slam for two strikes is allowed (see *Fast swings*). | Auto |
 | Fire BT + WW together | Fast weapons: fire both strikes for one Slam (see *Fast swings*). | on |
 | Sunder Armor | Bosses: build to 5 stacks, refresh at 8s, before everything at 4s. Other mobs: opportunity Sunders only (see *Sunder Armor*). | off |
@@ -963,6 +985,8 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `TARGET_SETTLE` | 0.4 | `/run` | After a target change, WarSlam doesn't queue through Nampower for this long (a queued spell keeps the target it was queued on). |
 | `OP_FROM_AOE` | off | `/run` | Without Nampower: also open the Overpower window on Whirlwind / Cleave dodges (may be another mob). With Nampower they always count, checked by mob ID. |
 | `OP_WINDOW` | 4 | `/run` | How long after a dodge WarSlam still goes for Overpower. 5s in theory, but on OctoWoW it's refused past about 4s. If one is refused anyway, WarSlam takes the window as closed and swaps back. |
+| `BLOODRAGE` | dw | window | Bloodrage to complete a pair: `off`, `dw` (while Death Wish is active or on cooldown), `always`. |
+| `BLOODRAGE_MIN_HP` | 0.30 | `/run` | No Bloodrage below this share of your health. |
 | `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
 | `DW_JUJU_DELAY` | 9 | window | Seconds between Death Wish and the Juju Flurry (5–15). It waits for the end of a Slam cast, so it can come a little later. |
 | `PAIR_TIMEOUT` | 4 | `/run` | Forget an unfinished pair after this many seconds. |

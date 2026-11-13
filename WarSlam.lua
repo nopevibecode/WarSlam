@@ -80,6 +80,9 @@ local CFG = {
   JUJU_NAME      = "Juju Flurry",
   USE_OVERPOWER  = true,  -- Overpower after a dodge, dancing Berserker -> Battle -> Berserker
   OP_RAGE_LOSS   = 0,     -- rage a stance swap may throw away (above what Tactical Mastery keeps)
+  BLOODRAGE      = "dw",  -- Bloodrage to complete a pair short of rage: "off", "dw" (only while Death Wish is active or on cooldown), "always"
+  BLOODRAGE_GAIN = 10,    -- rage Bloodrage gives at once
+  BLOODRAGE_MIN_HP = 0.30, -- never below this share of your health (Bloodrage costs health)
   OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
   TARGET_SETTLE  = 0.4,   -- no Nampower queueing this long after a target change
   OP_FROM_AOE    = false, -- open the Overpower window on Whirlwind / Cleave dodges too (can be another mob)
@@ -1281,9 +1284,60 @@ local function PairWorks(first, second, now, lead, rage, free, incoming)
   return r >= COST[second]()
 end
 
+------------------------------------------------------------------------
+-- Bloodrage (off the GCD, +10 rage at once) to complete a pair short of rage
+------------------------------------------------------------------------
+local function BloodrageReady()
+  if CFG.BLOODRAGE ~= "dw" and CFG.BLOODRAGE ~= "always" then return false end
+  if not inCombat or not Index("Bloodrage") or CD("Bloodrage") > 0.02 then return false end
+  -- "dw": only while Death Wish is active or on cooldown (you used it)
+  if CFG.BLOODRAGE == "dw" and not (Index("Death Wish") and CD("Death Wish") > CFG.GCD + 0.1) then return false end
+  local hp, mx = UnitHealth("player"), UnitHealthMax("player")
+  if mx and mx > 0 and hp / mx < CFG.BLOODRAGE_MIN_HP then return false end
+  return true
+end
+
+-- is the stance a strike needs already there?
+local function StanceFor(name)
+  local st = ActiveStance()
+  if name == "Overpower" then return st == "Battle Stance" end
+  if name == "Whirlwind" then return st == nil or st == "Berserker Stance" end
+  return true
+end
+
+-- a pair strike is short of rage by no more than Bloodrage gives: swap stance
+-- first if it needs one (a swap would throw Bloodrage's rage away), then
+-- Bloodrage; the strike goes on a following press. true = acted / waiting.
+local function PairRescue(name, now, lead, rage, free)
+  if not BloodrageReady() or not Index(name) or CD(name) > lead + 0.3 then return false end
+  local need = COST[name]()
+  if not StanceFor(name) then
+    if name == "Whirlwind" and not ownBattle then return false end   -- your own Battle Stance
+    if free - SwapLoss(rage) + CFG.BLOODRAGE_GAIN < need then return false end
+    CastStrike(name, lead, "pair: Bloodrage comes after the swap")
+    return true
+  end
+  if free >= need or free + CFG.BLOODRAGE_GAIN < need then return false end
+  if Tracing() then Dbg(string.format("BLOODRAGE for %s (%d rage, needs %d)", name, free, need)) end
+  CastSpellByName("Bloodrage")
+  return true
+end
+
 -- best pair for the next two GCD slots: one with Overpower first (its window
 -- is short), strike before Overpower when the rage is above what a swap keeps
+local PairCore
 local function ChoosePair(mode, now, lead, rage, free, incoming, pvp)
+  local a, b = PairCore(mode, now, lead, rage, free, incoming, pvp)
+  if a or not BloodrageReady() then return a, b end
+  -- short of rage: would Bloodrage complete it? (before the 2nd strike, or the 1st)
+  a, b = PairCore(mode, now, lead, rage, free, incoming + CFG.BLOODRAGE_GAIN, pvp)
+  if a then return a, b, "second" end
+  a, b = PairCore(mode, now, lead, rage + CFG.BLOODRAGE_GAIN, free + CFG.BLOODRAGE_GAIN, incoming, pvp)
+  if a then return a, b, "first" end
+  return nil
+end
+
+PairCore = function(mode, now, lead, rage, free, incoming, pvp)
   local strikes = StrikeList(mode)
   if CFG.USE_OVERPOWER and not pvp and Index("Overpower") and opUntil then
     for i = 1, table.getn(strikes) do
@@ -1302,8 +1356,13 @@ local function ChoosePair(mode, now, lead, rage, free, incoming, pvp)
 end
 
 -- start a pair: its 1st strike now (or the stance swap it needs)
-local function StartPair(first, second, now, lead, why)
-  pair = { first = first, second = second, at = now, sent = false }
+local function StartPair(first, second, now, lead, why, br)
+  pair = { first = first, second = second, at = now, sent = false, br = br }
+  if br == "first" and StanceFor(first) then
+    if Tracing() then Dbg("BLOODRAGE to start the pair with " .. first) end
+    CastSpellByName("Bloodrage")       -- its rage arrives next press, then the 1st strike
+    return
+  end
   if CastStrike(first, lead, why) == "cast" then pair.sent, pair.sentAt = true, now + (lead or 0) end
 end
 
@@ -1538,6 +1597,7 @@ end
 -- helpers Run calls, in one table: the 1.12 Lua allows a function at most
 -- 60 outside locals (upvalues), and Run would go past that otherwise
 local R = {
+  PairRescue = PairRescue,
   ChoosePair = ChoosePair,
   StartPair = StartPair,
   StrikeUsable = StrikeUsable,
@@ -1715,6 +1775,7 @@ local function Run(modeName)
         end
         return
       end
+      if R.PairRescue(pair.first, now, lead, rage, free) then return end
       if Tracing() then Dbg("PAIR: " .. pair.first .. " no longer usable: pair dropped") end
       pair = nil
     elseif CD(pair.first) > CFG.GCD + 0.1                -- its own cooldown runs: it was cast
@@ -1734,6 +1795,7 @@ local function Run(modeName)
         if Tracing() then Dbg(string.format("PAIR: %s needs %d rage (have %d): waiting for the auto", pair.second, COST[pair.second](), free)) end
         return
       end
+      if R.PairRescue(pair.second, now, lead, rage, free) then return end
       if Tracing() then Dbg(string.format("PAIR: %s not affordable (%d rage) or not ready: back to Slam", pair.second, free)) end
       pair = nil
     end
@@ -1810,13 +1872,13 @@ local function Run(modeName)
      and not R.UtilityWanted(mode, opener, pvp, now, lead, free, false) then
     local nextClose = rem + swing * (1 - slamFrac)    -- next swing's Slam window closes
     if lead + 2 * CFG.GCD <= nextClose then
-      local first, second = R.ChoosePair(mode, now, lead, rage, free, 0, pvp)
+      local first, second, br = R.ChoosePair(mode, now, lead, rage, free, 0, pvp)
       if first then
         if Tracing() then
           Dbg(string.format("PAIR NOW: %s + %s up, rage %d: both before the next auto (done in %.2fs, next Slam window closes in %.2fs), Slam after it",
             first, second, free, lead + 2 * CFG.GCD, nextClose))
         end
-        R.StartPair(first, second, now, lead, "pair now")
+        R.StartPair(first, second, now, lead, "pair now", br)
         return
       end
     end
@@ -1886,12 +1948,12 @@ local function Run(modeName)
     if not queuedName and rem < lead + CFG.GCD + 0.3 then incoming = math.floor(autoRage - autoDev / 2) end
     if incoming < 0 then incoming = 0 end
     if incoming > CFG.PAIR_RAGE then incoming = CFG.PAIR_RAGE end
-    local first, second = R.ChoosePair(mode, now, lead, rage, free, incoming, pvp)
+    local first, second, br = R.ChoosePair(mode, now, lead, rage, free, incoming, pvp)
     if first then
       if Tracing() then
         Dbg(string.format("PAIR: %s + %s are up, rage %d (+~%d from the auto): %s now, %s instead of the next Slam", first, second, free, incoming, first, second))
       end
-      R.StartPair(first, second, now, lead, "pair")
+      R.StartPair(first, second, now, lead, "pair", br)
       return
     elseif Tracing() and R.PairSoon(mode) then
       Dbg(string.format("PAIR: none affordable (rage %d, auto brings ~%d%s)", free, incoming, queuedName and ", HS queued" or ""))

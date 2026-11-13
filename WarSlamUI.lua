@@ -18,7 +18,7 @@ end
 local PROFILE_KEYS = { "SLAM_FRAC", "GCD_SLACK", "CAST_LOCK", "USE_SUNDER", "USE_SHOUT",
   "OPENER", "OPENER_ANY", "SLOW_WEAPON", "PVP_BASIC", "ST_DUMP", "MT_DUMP", "USE_NAMPOWER", "NP_LEAD",
   "PAIR_STRIKES", "PAIR_RAGE", "PAIR_HS_AT", "SUNDER_ANY", "SUNDER_BUILD_GCD", "DW_JUJU", "DW_JUJU_DELAY",
-  "USE_OVERPOWER", "OP_RAGE_LOSS", "OP_STAY_BATTLE", "OP_TAKE_BLOCKED" }
+  "USE_OVERPOWER", "OP_RAGE_LOSS", "OP_STAY_BATTLE", "OP_TAKE_BLOCKED", "BLOODRAGE" }
 local OTHER_KEYS = { "MINIMAP_SHOW", "MINIMAP_ANGLE" }
 
 local function Get(k)
@@ -525,6 +525,14 @@ local function Build()
     function(v) CFG.DW_JUJU_DELAY = v end)
   local dwNote = Label(C1, y - 94, "GameFontDisableSmall", 260)
   dwNote:SetText("Arm Death Wish for the next GCD with /run WarSlamDW()")
+  Label(C1, y - 114, "GameFontNormalSmall"):SetText("Bloodrage for pairs")
+  MakeDropdown("Bloodrage", C1, y - 126, 150, {
+      { value = "off",    text = "Off" },
+      { value = "dw",     text = "With Death Wish" },
+      { value = "always", text = "Always" },
+    },
+    function() return CFG.BLOODRAGE end,
+    function(v) CFG.BLOODRAGE = v; Save() end)
 
   -- right column
   y = TOP

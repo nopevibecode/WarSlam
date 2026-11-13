@@ -8,6 +8,10 @@
   average, up to +7% at high rage). Base 3.40 is back to the Auto window
   (same as Base 3.50), and both fast profiles let a pair be at most 10 rage
   short instead of 20 (+0.4%). Applied once to your existing base profiles.
+- **Defaults button** now also applies the simulated values for your weapon's
+  speed (when it has a base profile) and resets that base profile if it's
+  active. Before, it went back to generic values (Slam window 0.60, Heroic
+  Strike at 71, pairs with no leeway).
 
 ## 1.1 — 2026-11-13
 

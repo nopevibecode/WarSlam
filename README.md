@@ -558,7 +558,10 @@ strike test, **Log to file**, **Debug to chat**, the log size with **Clear
 logs**, and **Show the minimap button** (also `/warslam minimap`).
 
 **Defaults**, at the bottom of every tab, puts WarSlam's settings back to the
-values above. It doesn't change Nampower's settings.
+values above, then applies the simulated values of the base profile for your
+weapon's speed if there is one (3.40, 3.50, 3.60, 3.80: Slam window, Heroic
+Strike threshold, pair leeway). If that base profile is the active one, it's
+reset too. It doesn't change Nampower's settings.
 
 
 ## Commands

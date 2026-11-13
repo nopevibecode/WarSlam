@@ -804,13 +804,28 @@ local function Build()
   reset:SetHeight(22)
   reset:SetPoint("BOTTOM", frame, "BOTTOM", 0, 18)
   reset:SetText("Defaults")
-  Tip(reset, "Resets WarSlam's own settings.\nNampower settings are not changed.")
+  Tip(reset, "Resets WarSlam's own settings, with the simulated values for your weapon's speed when there's a base profile for it (3.40, 3.50, 3.60, 3.80). If that base profile is active, it's reset too.\nNampower settings are not changed.")
   reset:SetScript("OnClick", function()
     Apply(DEFAULTS, PROFILE_KEYS)   -- the minimap button stays where it is
+    local speed = WarSlamWeapon()
+    local tuned
+    if speed then
+      for name, b in pairs(BASE_PROFILES) do
+        if math.abs(b.speed - speed) < 0.005 then Apply(b, BASE_KEYS) tuned = name end
+      end
+    end
     Save()
+    local act = WarSlamSettings.active
+    if act and act == tuned and WarSlamSettings.profiles[act] then
+      WarSlamSettings.profiles[act] = Snapshot()
+    end
     if WarSlamUpdateEvents then WarSlamUpdateEvents() end
     frame.RefreshAll()
-    Print("settings reset to defaults")
+    if tuned then
+      Print("settings reset to defaults, with the simulated values of '" .. tuned .. "'")
+    else
+      Print("settings reset to defaults (no base profile for this weapon speed)")
+    end
   end)
 
   frame.RefreshAll = function()

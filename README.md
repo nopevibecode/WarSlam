@@ -947,6 +947,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `OP_TAKE_BLOCKED` | on | window | Overpower may take a slot that costs the next Slam. |
 | `OP_STAY_BATTLE` | off | window | Stay in Battle after Overpower to spend rage first. |
 | `OP_STAY_MAX` | 3 | `/run` | Longest stay in Battle when that's on. |
+| `TARGET_SETTLE` | 0.4 | `/run` | After a target change, WarSlam doesn't queue through Nampower for this long (a queued spell keeps the target it was queued on). |
 | `OP_FROM_AOE` | off | `/run` | Without Nampower: also open the Overpower window on Whirlwind / Cleave dodges (may be another mob). With Nampower they always count, checked by mob ID. |
 | `OP_WINDOW` | 4 | `/run` | How long after a dodge WarSlam still goes for Overpower. 5s in theory, but on OctoWoW it's refused past about 4s. If one is refused anyway, WarSlam takes the window as closed and swaps back. |
 | `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |

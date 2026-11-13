@@ -81,6 +81,7 @@ local CFG = {
   USE_OVERPOWER  = true,  -- Overpower after a dodge, dancing Berserker -> Battle -> Berserker
   OP_RAGE_LOSS   = 0,     -- rage a stance swap may throw away (above what Tactical Mastery keeps)
   OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
+  TARGET_SETTLE  = 0.4,   -- no Nampower queueing this long after a target change
   OP_FROM_AOE    = false, -- open the Overpower window on Whirlwind / Cleave dodges too (can be another mob)
   OP_STAY_BATTLE = false, -- after Overpower, stay in Battle to spend rage before swapping back
   OP_STAY_MAX    = 3,     -- ...but never longer than this many seconds
@@ -511,6 +512,7 @@ local opUntil, opTarget = nil, nil
 --   SPELL_MISS_SELF:  arg1 caster, arg2 target GUID, arg3 spell id, arg4 miss type (3 = dodge)
 --   AUTO_ATTACK_SELF: arg1 attacker, arg2 target GUID, arg3 damage, arg4 hit info, arg5 victim state (2 = dodge)
 local opTargetGuid = nil
+local targetChangedAt = -10 -- no Nampower queueing just after a target change
 local npDodges = false      -- set once a Nampower combat event arrives: the text path is then skipped
 -- the Overpower window belongs to your current target
 local function OPOnTarget()
@@ -749,6 +751,7 @@ f:RegisterEvent("CHAT_MSG_SPELL_SELF_BUFF")
 f:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS")
 f:RegisterEvent("PLAYER_REGEN_ENABLED")
 f:RegisterEvent("PLAYER_REGEN_DISABLED")
+f:RegisterEvent("PLAYER_TARGET_CHANGED")
 f:RegisterEvent("VARIABLES_LOADED")
 -- Nampower events (ignored if Nampower isn't installed)
 pcall(f.RegisterEvent, f, "SPELL_GO_SELF")    -- your own casts only: cheap
@@ -932,6 +935,13 @@ f:SetScript("OnEvent", function()
 
   elseif event == "UNIT_DIED" then
     if arg1 then sunderAt[arg1] = nil end
+
+  elseif event == "PLAYER_TARGET_CHANGED" then
+    targetChangedAt = GetTime()
+    if Tracing() then
+      local g = type(GetUnitGUID) == "function" and GetUnitGUID("target") or ""
+      Dbg("TARGET: " .. tostring(UnitName("target") or "none") .. " " .. tostring(g))
+    end
 
   elseif event == "PLAYER_REGEN_DISABLED" then
     Log("---- combat start ----")
@@ -1475,6 +1485,12 @@ local function Run(modeName)
   if np then window = NPWindow() end
   if lead > window then
     if Tracing() then Dbg(string.format("waiting: %s %.2fs left", what, lead)) end
+    return
+  end
+  -- just changed target: don't queue through Nampower (a queued spell keeps
+  -- the target it was queued on); cast directly once the GCD / cast is over
+  if lead > 0 and now - targetChangedAt < CFG.TARGET_SETTLE then
+    if Tracing() then Dbg("target just changed: no queueing, cast when ready") end
     return
   end
   if lead > 0.005 then

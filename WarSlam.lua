@@ -210,11 +210,13 @@ local lastGcdName = nil  -- last GCD ability sent (Slam included): a pair may on
 local procWatch = {}   -- procWatch.current = proc being followed (see extra attack tracking)
 -- lead > 0: Nampower will fire it that many seconds from now (queued)
 local opSentAt = nil        -- last Overpower sent: if its cooldown doesn't start, the window is gone
+local ownBattle = false     -- WarSlam put you in Battle (or Overpowered there): only then it swaps you back
 
 local function Cast(name, lead)
   lead = lead or 0
   if name ~= "Heroic Strike" and name ~= "Cleave" then lastGcdCastAt = GetTime() + lead; lastGcdName = name end
   if name == "Overpower" and not opSentAt then opSentAt = GetTime() + lead end
+  if name == "Overpower" then ownBattle = true end
   local pc = procWatch.current
   if pc and not pc.nextCast and name ~= "Heroic Strike" and name ~= "Cleave" then
     pc.nextCast = string.format("%s %s +%.2fs", lead > 0 and "queued" or "cast", name, GetTime() - pc.t)
@@ -946,6 +948,9 @@ f:SetScript("OnEvent", function()
   elseif event == "PLAYER_REGEN_DISABLED" then
     Log("---- combat start ----")
     build.since, build.sunderAt, build.fails, build.off = nil, nil, 0, nil
+    ScanTalents()   -- read again: right after a /reload they can come back empty
+    Log(string.format("talents: Tactical Mastery %d/5 (a swap keeps %d rage), Improved Slam %d/2, Improved Heroic Strike %d/3",
+      tmPoints or 0, 5 * (tmPoints or 0), impSlam or 0, impHS or 0))
     inCombat = true
     combatStartAt = GetTime()
     -- the opening auto often lands just before combat is flagged
@@ -1072,6 +1077,7 @@ local function SwapTo(name, why)
   if not i then return false end
   CastShapeshiftForm(i)
   lastSwapAt = GetTime()
+  ownBattle = (name == "Battle Stance")
   if Tracing() then Dbg("STANCE: " .. name .. " (" .. why .. ")") end
   return true
 end
@@ -1210,6 +1216,7 @@ local function StrikeUsable(name, now, lead, rage, free, committed)
     return (committed or loss <= CFG.OP_RAGE_LOSS) and free - loss >= COST["Overpower"]()
   end
   if name == "Whirlwind" and st == "Battle Stance" then
+    if not ownBattle then return false end                  -- your own Battle Stance: not WarSlam's to change
     return free - SwapLoss(rage) >= COST["Whirlwind"]()      -- the swap back comes first
   end
   return Ready(name, free, lead)
@@ -1222,6 +1229,7 @@ local function CastStrike(name, lead, why)
   local need = (name == "Overpower" and "Battle Stance") or (name == "Whirlwind" and "Berserker Stance")
   if need and st and st ~= need then
     if casting or not StanceReady() then return "wait" end
+    if need == "Berserker Stance" and not ownBattle then return "wait" end  -- your own Battle Stance
     SwapTo(need, why)
     return "swap"
   end
@@ -1266,6 +1274,7 @@ local function PairWorks(first, second, now, lead, rage, free, incoming)
     return r >= COST["Overpower"]()
   end
   if second == "Whirlwind" and st == "Battle Stance" then
+    if first ~= "Overpower" and not ownBattle then return false end   -- your own Battle Stance
     local loss = r - keep                            -- the swap back throws this away
     if loss > 0 then r = r - loss end
   end
@@ -1413,7 +1422,10 @@ end
 -- back to Berserker once the Overpower is done or its window closed (off the
 -- GCD); optionally stay a little in Battle to spend rage. true = acted.
 local function SwapBack(now, rage, free, dump)
+  if ActiveStance() ~= "Battle Stance" then ownBattle = false end
   if ActiveStance() ~= "Battle Stance" or OPUp(now, 1.0) then battleDoneAt = nil end
+  -- Battle Stance you chose yourself (Charge...) is yours: WarSlam leaves it alone
+  if not ownBattle then return false end
   if not (CFG.USE_OVERPOWER and inCombat and not casting and ActiveStance() == "Battle Stance"
      and not OPUp(now, 1.0) and StanceIndex("Berserker Stance") and StanceReady()) then return false end
   if not battleDoneAt then battleDoneAt = now end

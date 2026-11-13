@@ -365,7 +365,12 @@ after the swap), **Heroic Strike** (Cleave in multi target)
 while your rage is at or above what Tactical Mastery keeps plus its cost
 (25 + 12 = 37 at 5/5 and 3/3 Improved Heroic Strike), and the usual Slam.
 It never stays more than 3 seconds, nor when Whirlwind is due. Untick **Stay
-in Battle to dump rage** to swap back straight away. Without
+in Battle to dump rage** to swap back straight away. WarSlam only manages
+the Battle Stance visits it starts itself (or where it casts an Overpower):
+if you're in Battle Stance on your own, after a Charge say, it leaves your
+stance alone, like it never touches your target. Talents are read again at
+every combat start and written to the log ("talents: Tactical Mastery
+x/5..."). Without
 Tactical Mastery, a swap keeps no rage, so Overpower only happens when your
 rage is within the slider. In Defensive Stance, WarSlam never swaps. In PvP
 mode there's no Overpower.

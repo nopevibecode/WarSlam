@@ -415,6 +415,10 @@ Setting **Bloodrage for pairs** (Rotation tab, Cooldowns):
   within 50s (it's kept for that window). With Death Wish ready and unused,
   or no Death Wish at all, it's free to fire.
 
+In both modes Bloodrage always goes out during Death Wish: if no pair needed
+it in the first 15s of Death Wish, it fires the next time your rage drops
+below 40 while Death Wish is still on.
+
 Never below 30% health (Bloodrage costs health). In the simulator at dummy
 rage it fires about once a minute (its cooldown) and turns about one Slam a
 minute into a Bloodthirst or Whirlwind, for the same strikes per minute.
@@ -995,6 +999,8 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `BLOODRAGE` | dw | window | Bloodrage to complete a pair: `off`, `dw` (after Death Wish, while its cooldown outlasts Bloodrage's), `always`. |
 | `BLOODRAGE_DW_SLACK` | 10 | `/run` | Bloodrage may come back up to this many seconds after Death Wish is usable again. |
 | `BLOODRAGE_MIN_HP` | 0.30 | `/run` | No Bloodrage below this share of your health. |
+| `BLOODRAGE_DW_AFTER` | 15 | `/run` | If no pair used Bloodrage this many seconds into Death Wish, it goes out the next time rage drops below `BLOODRAGE_DW_BELOW` (0 = off). |
+| `BLOODRAGE_DW_BELOW` | 40 | `/run` | Rage under which that late Death Wish Bloodrage goes out. |
 | `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
 | `DW_JUJU_DELAY` | 9 | window | Seconds between Death Wish and the Juju Flurry (5–15). It waits for the end of a Slam cast, so it can come a little later. |
 | `PAIR_TIMEOUT` | 4 | `/run` | Forget an unfinished pair after this many seconds. |

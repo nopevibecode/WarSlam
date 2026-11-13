@@ -85,6 +85,9 @@ local CFG = {
   BLOODRAGE_CD   = 60,    -- Bloodrage's cooldown
   BLOODRAGE_DW_SLACK = 10, -- Bloodrage may come back up to this long after Death Wish is usable again
   BLOODRAGE_MIN_HP = 0.30, -- never below this share of your health (Bloodrage costs health)
+  BLOODRAGE_DW_AFTER = 15, -- no Bloodrage yet this far into Death Wish (0 = off)...
+  BLOODRAGE_DW_BELOW = 40, -- ...use it the next time rage drops below this
+  DW_DURATION    = 30,    -- Death Wish lasts this long
   OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
   TARGET_SETTLE  = 0.4,   -- no Nampower queueing this long after a target change
   OP_FROM_AOE    = false, -- open the Overpower window on Whirlwind / Cleave dodges too (can be another mob)
@@ -1619,6 +1622,18 @@ end
 local function CooldownSteps(now)
   DWCheck(now)
   if not casting then UseJuju(now) end
+  -- Bloodrage always goes out during Death Wish: if no pair needed it in the
+  -- first BLOODRAGE_DW_AFTER seconds, use it the next time rage drops below
+  -- BLOODRAGE_DW_BELOW while Death Wish is still on
+  if casting or CFG.BLOODRAGE_DW_AFTER <= 0 then return end
+  local start = DWStart()
+  if not start then return end
+  local into = now - start
+  if into < CFG.BLOODRAGE_DW_AFTER or into >= CFG.DW_DURATION then return end
+  local rage = UnitMana("player")
+  if rage >= CFG.BLOODRAGE_DW_BELOW or not BloodrageReady() then return end
+  Log(string.format("BLOODRAGE: Death Wish +%.0fs, none yet, rage %d", into, rage))
+  CastSpellByName("Bloodrage")
 end
 
 -- helpers Run calls, in one table: the 1.12 Lua allows a function at most

@@ -1988,6 +1988,16 @@ local function Run(modeName)
   if not afterSlam and not pair and not opener and Tracing() and R.PairSoon(mode) then
     Dbg("PAIR: not after a Slam (last GCD: " .. tostring(lastGcdName) .. ") and BT/WW would cost this Slam too: wait for the next Slam")
   end
+  -- no Slam this swing and its window already closed: a pair would give 2
+  -- strikes for 2 swings (its 2nd strike costs the next Slam), no more than
+  -- the 1st strike alone now and the next Slam, and it wastes the 2nd strike's
+  -- cooldown and leaves a hole. The 1st strike goes alone (normal GCD below).
+  if afterSlam and not slammed and rem < swing * slamFrac then
+    if not pair and not opener and Tracing() and R.PairSoon(mode) then
+      Dbg("PAIR: this swing's Slam is already lost: no pair (it would cost the next Slam too)")
+    end
+    afterSlam = false
+  end
   if CFG.PAIR_STRIKES and not SlowWeapon() and not opener and not pair and afterSlam
      and (lead == 0 or NPQueues(false)) and not R.UtilityWanted(mode, opener, pvp, now, lead, free, gcdFits) then
     -- rage that comes in before the 2nd strike: the auto in between, if it

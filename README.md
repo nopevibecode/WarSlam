@@ -194,7 +194,10 @@ normal GCD, ending before the next Slam window closes. Either way only the
 second strike costs a Slam. When the first strike would cost a Slam too
 (after a Sunder or Battle Shout late in the swing), BT would be the 2nd GCD
 and WW the 3rd, which with Flurry costs two Slams, so WarSlam waits for the
-next Slam. In the settings window, **BT + WW pair: rage leeway** (0–40)
+next Slam. And when the swing had no Slam and its Slam window has already
+closed, no pair starts: it would give two strikes for two swings (the second
+costs the next Slam) and leave a hole after it, so the first strike goes alone
+and the next Slam keeps its place. In the settings window, **BT + WW pair: rage leeway** (0–40)
 allows the pair to start that much rage short of both costs, counting on the
 auto in between. WarSlam measures how much rage your autos really bring and
 never counts on more than a cautious figure (the average minus half its

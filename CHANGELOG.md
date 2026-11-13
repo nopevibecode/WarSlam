@@ -24,6 +24,10 @@
   Bloodthirst and Whirlwind on cooldown, typically the swing after a pair)
   now refreshes a full Sunder stack early, when it has 15s or less left
   (`SUNDER_HOLE`), so the refresh doesn't take another strike's slot later.
+- **No pair once this swing's Slam is lost:** if the swing had no Slam and
+  its Slam window has closed, a Bloodthirst + Whirlwind pair would also cost
+  the next Slam (two strikes for two swings) and leave a hole. The first
+  strike now goes alone, and the second stays ready for a real pair.
 
 ## 1.1 — 2026-11-13
 

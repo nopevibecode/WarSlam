@@ -406,10 +406,13 @@ Setting **Bloodrage for pairs** (Rotation tab, Cooldowns):
 
 - **Off**: never.
 - **With Death Wish** (default): only after you used Death Wish, and only
-  while its cooldown has more than about 65s left. That covers the whole
-  Death Wish buff and the next ~1min50, and Bloodrage (60s cooldown) is
-  always back before Death Wish is, for your next Death Wish window.
-- **Always**: whenever it's off cooldown.
+  while its cooldown has more than 50s left. That covers the whole Death
+  Wish buff and the next ~2 minutes, and Bloodrage (60s cooldown) is always
+  back within 10s of Death Wish being usable again, so it's there during
+  your next Death Wish window.
+- **Always**: whenever it's off cooldown, except when Death Wish comes back
+  within 50s (it's kept for that window). With Death Wish ready and unused,
+  or no Death Wish at all, it's free to fire.
 
 Never below 30% health (Bloodrage costs health). In the simulator at dummy
 rage it fires about once a minute (its cooldown) and turns about one Slam a
@@ -988,6 +991,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `OP_FROM_AOE` | off | `/run` | Without Nampower: also open the Overpower window on Whirlwind / Cleave dodges (may be another mob). With Nampower they always count, checked by mob ID. |
 | `OP_WINDOW` | 4 | `/run` | How long after a dodge WarSlam still goes for Overpower. 5s in theory, but on OctoWoW it's refused past about 4s. If one is refused anyway, WarSlam takes the window as closed and swaps back. |
 | `BLOODRAGE` | dw | window | Bloodrage to complete a pair: `off`, `dw` (after Death Wish, while its cooldown outlasts Bloodrage's), `always`. |
+| `BLOODRAGE_DW_SLACK` | 10 | `/run` | Bloodrage may come back up to this many seconds after Death Wish is usable again. |
 | `BLOODRAGE_MIN_HP` | 0.30 | `/run` | No Bloodrage below this share of your health. |
 | `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
 | `DW_JUJU_DELAY` | 9 | window | Seconds between Death Wish and the Juju Flurry (5–15). It waits for the end of a Slam cast, so it can come a little later. |

@@ -83,6 +83,7 @@ local CFG = {
   BLOODRAGE      = "dw",  -- Bloodrage to complete a pair short of rage: "off", "dw" (only while Death Wish is active or on cooldown), "always"
   BLOODRAGE_GAIN = 10,    -- rage Bloodrage gives at once
   BLOODRAGE_CD   = 60,    -- Bloodrage's cooldown
+  BLOODRAGE_DW_SLACK = 10, -- Bloodrage may come back up to this long after Death Wish is usable again
   BLOODRAGE_MIN_HP = 0.30, -- never below this share of your health (Bloodrage costs health)
   OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
   TARGET_SETTLE  = 0.4,   -- no Nampower queueing this long after a target change
@@ -1291,13 +1292,18 @@ end
 local function BloodrageReady()
   if CFG.BLOODRAGE ~= "dw" and CFG.BLOODRAGE ~= "always" then return false end
   if not inCombat or not Index("Bloodrage") or CD("Bloodrage") > 0.02 then return false end
-  -- "dw": only after you used Death Wish, and only while Bloodrage would be
-  -- back before Death Wish is (its cooldown has more left than Bloodrage's),
-  -- so a Bloodrage never sits on cooldown when Death Wish comes up again.
-  -- Death Wish active (30s of its 3 min) always qualifies.
+  -- Bloodrage must be back within BLOODRAGE_DW_SLACK seconds of Death Wish
+  -- becoming usable again, so it's there during the next Death Wish window:
+  -- Death Wish's cooldown must have more than (60 - 10) = 50s left.
+  local dwLeft = Index("Death Wish") and CD("Death Wish") or nil
+  local enough = dwLeft and dwLeft > CFG.BLOODRAGE_CD - CFG.BLOODRAGE_DW_SLACK
   if CFG.BLOODRAGE == "dw" then
-    if not Index("Death Wish") then return false end
-    if CD("Death Wish") <= CFG.BLOODRAGE_CD + 5 then return false end
+    -- only after you used Death Wish (active or on cooldown, with enough left)
+    if not enough then return false end
+  else
+    -- "always": hold it when Death Wish comes back soon (ready, unused
+    -- Death Wish or no Death Wish at all: free to use)
+    if dwLeft and dwLeft > CFG.GCD + 0.1 and not enough then return false end
   end
   local hp, mx = UnitHealth("player"), UnitHealthMax("player")
   if mx and mx > 0 and hp / mx < CFG.BLOODRAGE_MIN_HP then return false end

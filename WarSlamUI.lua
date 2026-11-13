@@ -213,6 +213,11 @@ loader:SetScript("OnEvent", function()
       WarSlamSettings.SLOW_WEAPON = "yes"
     end
     WarSlamSettings.TRADE_SLAM = nil
+    -- "stay in Battle to dump rage" became the default: switch it on once
+    if not WarSlamSettings.opStayV then
+      WarSlamSettings.OP_STAY_BATTLE = true
+      WarSlamSettings.opStayV = 1
+    end
     Apply(WarSlamSettings, PROFILE_KEYS)
     Apply(WarSlamSettings, OTHER_KEYS)
   end
@@ -570,10 +575,10 @@ local function Build()
     function() return CFG.OP_RAGE_LOSS end,
     function(v) CFG.OP_RAGE_LOSS = v end,
     "0 = only swap when your rage fits in what Tactical\nMastery keeps (5 per point).")
-  MakeCheck("OpStay", "Stay in Battle to spend rage", C2 - 4, y - 116,
+  MakeCheck("OpStay", "Stay in Battle to dump rage", C2 - 4, y - 116,
     function() return CFG.OP_STAY_BATTLE end,
     function(on) CFG.OP_STAY_BATTLE = on end,
-    "Off: back to Berserker right after Overpower,\neven if the swap loses rage.\nOn: stay in Battle to spend the rage first (Slam,\nBT, HS work there), at most 3s, or until WW is due.")
+    "On: after Overpower, stay in Battle to dump the rage\na swap would lose: Bloodthirst / MS if ready, Heroic\nStrike while above what Tactical Mastery keeps + its\ncost, Slam. At most 3s, never when WW is due.\nOff: back to Berserker right away, even losing rage.")
   local tmLabel = Label(C2 + 76, y - 2, "GameFontHighlightSmall", 200)
   frame.RefreshTM = function()
     local kept, pts = WarSlamRageKept()

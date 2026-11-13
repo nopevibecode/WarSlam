@@ -352,12 +352,14 @@ stance dance, starting from Berserker Stance:
 
 A swap throws away the rage above what **Tactical Mastery** keeps (5 per
 point, read from your talents). WarSlam only swaps when that loss is within
-the **Rage a swap may lose** slider (default 0, so no loss). The swap back
-to Berserker happens right after Overpower, even if it loses rage, so
-you're never stuck in Battle Stance. Tick **Stay in Battle to spend rage**
-to stay a little and spend the rage first instead (Slam, Bloodthirst and
-Heroic Strike work there): at most 3 seconds, and never when Whirlwind is
-due. Without
+the **Rage a swap may lose** slider (default 0, so no loss). After the
+Overpower, if swapping back would throw rage away (an auto often lands while
+you're in Battle), WarSlam **stays in Battle to dump it** first: Bloodthirst
+/ Mortal Strike if it's ready, **Heroic Strike** (Cleave in multi target)
+while your rage is at or above what Tactical Mastery keeps plus its cost
+(25 + 12 = 37 at 5/5 and 3/3 Improved Heroic Strike), and the usual Slam.
+It never stays more than 3 seconds, nor when Whirlwind is due. Untick **Stay
+in Battle to dump rage** to swap back straight away. Without
 Tactical Mastery, a swap keeps no rage, so Overpower only happens when your
 rage is within the slider. In Defensive Stance, WarSlam never swaps. In PvP
 mode there's no Overpower.
@@ -461,7 +463,7 @@ or slow). Below that, three tabs:
 | Overpower (stance dance) | After a dodge: Battle Stance, Overpower, back to Berserker (see *Overpower and stance dancing*). | on |
 | ...even if it costs the next Slam | Overpower takes the next GCD slot, before BT + WW pairs, even when that costs the next Slam. Off: only slots that cost no Slam. | on |
 | Rage a swap may lose | Rage the swap *to* Battle may throw away above what Tactical Mastery keeps (0–30). | 0 |
-| Stay in Battle to spend rage | After Overpower, stay in Battle up to 3s to spend rage before swapping back. Off: swap back straight away. | off |
+| Stay in Battle to dump rage | After Overpower, stay in Battle up to 3s to dump the rage a swap would lose: Bloodthirst / MS, Heroic Strike, Slam. Off: swap back straight away. | on |
 
 **Advanced**: set once.
 
@@ -945,7 +947,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `USE_OVERPOWER` | on | window | Overpower after a dodge, with the stance dance. |
 | `OP_RAGE_LOSS` | 0 | window | Rage a stance swap may throw away above what Tactical Mastery keeps. |
 | `OP_TAKE_BLOCKED` | on | window | Overpower may take a slot that costs the next Slam. |
-| `OP_STAY_BATTLE` | off | window | Stay in Battle after Overpower to spend rage first. |
+| `OP_STAY_BATTLE` | on | window | Stay in Battle after Overpower to dump the rage a swap would lose. |
 | `OP_STAY_MAX` | 3 | `/run` | Longest stay in Battle when that's on. |
 | `TARGET_SETTLE` | 0.4 | `/run` | After a target change, WarSlam doesn't queue through Nampower for this long (a queued spell keeps the target it was queued on). |
 | `OP_FROM_AOE` | off | `/run` | Without Nampower: also open the Overpower window on Whirlwind / Cleave dodges (may be another mob). With Nampower they always count, checked by mob ID. |

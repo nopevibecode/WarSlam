@@ -83,7 +83,7 @@ local CFG = {
   OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
   TARGET_SETTLE  = 0.4,   -- no Nampower queueing this long after a target change
   OP_FROM_AOE    = false, -- open the Overpower window on Whirlwind / Cleave dodges too (can be another mob)
-  OP_STAY_BATTLE = false, -- after Overpower, stay in Battle to spend rage before swapping back
+  OP_STAY_BATTLE = true,  -- after Overpower, stay in Battle to dump the rage a swap would lose (BT / MS, Heroic Strike)
   OP_STAY_MAX    = 3,     -- ...but never longer than this many seconds
   OP_COST        = 5,
   OP_WINDOW      = 4,     -- Overpower counted usable this long after the dodge (5s in theory; on OctoWoW it fails past ~4s)
@@ -1410,18 +1410,35 @@ end
 ------------------------------------------------------------------------
 -- back to Berserker once the Overpower is done or its window closed (off the
 -- GCD); optionally stay a little in Battle to spend rage. true = acted.
-local function SwapBack(now, rage)
+local function SwapBack(now, rage, free, dump)
   if ActiveStance() ~= "Battle Stance" or OPUp(now, 1.0) then battleDoneAt = nil end
   if not (CFG.USE_OVERPOWER and inCombat and not casting and ActiveStance() == "Battle Stance"
      and not OPUp(now, 1.0) and StanceIndex("Berserker Stance") and StanceReady()) then return false end
   if not battleDoneAt then battleDoneAt = now end
+  local keep = WarSlamRageKept()
   local loss = SwapLoss(rage)
-  -- optional: stay a little to spend the rage, never past OP_STAY_MAX or a due WW
+  -- stay to dump the rage the swap would throw away: never past OP_STAY_MAX,
+  -- never when Whirlwind is due (it needs Berserker)
   local stay = CFG.OP_STAY_BATTLE and loss > CFG.OP_RAGE_LOSS and now - battleDoneAt < CFG.OP_STAY_MAX
     and not (Index("Whirlwind") and CD("Whirlwind") <= 1.5)
   if not stay then
     SwapTo("Berserker Stance", string.format("Overpower done, %d rage lost", loss))
     return true
+  end
+  -- 1) Bloodthirst / Mortal Strike works in Battle: the rage becomes a strike
+  local main = MainStrike()
+  if main and Index(main) and CD(main) <= 0.02 and free >= COST[main]() then
+    if Tracing() then Dbg(string.format("STANCE: %s before swapping back (a swap would lose %d)", main, loss)) end
+    Cast(main, 0)
+    return true
+  end
+  -- 2) Heroic Strike / Cleave (off the GCD) while the rage stays above what a
+  --    swap keeps + its cost; it's spent when the next swing lands
+  if not queuedName and dump and Index(dump) and free >= keep + COST[dump]() then
+    if Tracing() then Dbg(string.format("STANCE: %s queued before swapping back (rage %d, a swap keeps %d)", dump, rage, keep)) end
+    Cast(dump)
+    queuedName, queuedAt = dump, now
+    return false
   end
   if Tracing() then Dbg(string.format("STANCE: staying in Battle to spend rage (a swap would lose %d), %.1fs left", loss, CFG.OP_STAY_MAX - (now - battleDoneAt))) end
   return false
@@ -1574,7 +1591,8 @@ local function Run(modeName)
   -- STANCE: back to Berserker once the Overpower is done or its window closed
   -- (off the GCD). If that would throw away more rage than OP_RAGE_LOSS, stay
   -- in Battle and spend it first (Slam, BT, HS work there), unless WW is due.
-  if R.SwapBack(now, rage) then return end
+  if R.SwapBack(now, rage, free, mode.dump) then return end
+  if queuedName then free = rage - COST[queuedName]() end
 
   local gcd = CD("Slam")
   if gcd == 999 then

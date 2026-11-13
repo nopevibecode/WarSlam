@@ -88,6 +88,7 @@ local CFG = {
   OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
   TARGET_SETTLE  = 0.4,   -- no Nampower queueing this long after a target change
   OP_FROM_AOE    = false, -- open the Overpower window on Whirlwind / Cleave dodges too (can be another mob)
+  AUTO_BERSERKER = true,  -- in combat in your own Battle Stance (Charge): to Berserker as soon as no rage is lost
   OP_STAY_BATTLE = true,  -- after Overpower, stay in Battle to dump the rage a swap would lose (BT / MS, Heroic Strike)
   OP_STAY_MAX    = 3,     -- ...but never longer than this many seconds
   OP_COST        = 5,
@@ -1496,8 +1497,16 @@ end
 local function SwapBack(now, rage, free, dump)
   if ActiveStance() ~= "Battle Stance" then ownBattle = false end
   if ActiveStance() ~= "Battle Stance" or OPUp(now, 1.0) then battleDoneAt = nil end
-  -- Battle Stance you chose yourself (Charge...) is yours: WarSlam leaves it alone
-  if not ownBattle then return false end
+  -- Battle Stance you chose yourself (Charge...): straight to Berserker in
+  -- combat as soon as that loses no rage at all; otherwise it's yours to change
+  if not ownBattle then
+    if CFG.AUTO_BERSERKER and inCombat and not casting and ActiveStance() == "Battle Stance"
+       and StanceIndex("Berserker Stance") and StanceReady() and SwapLoss(rage) == 0 then
+      SwapTo("Berserker Stance", "your Battle Stance, no rage lost")
+      return true
+    end
+    return false
+  end
   if not (CFG.USE_OVERPOWER and inCombat and not casting and ActiveStance() == "Battle Stance"
      and not OPUp(now, 1.0) and StanceIndex("Berserker Stance") and StanceReady()) then return false end
   if not battleDoneAt then battleDoneAt = now end

@@ -367,8 +367,9 @@ while your rage is at or above what Tactical Mastery keeps plus its cost
 It never stays more than 3 seconds, nor when Whirlwind is due. Untick **Stay
 in Battle to dump rage** to swap back straight away. WarSlam only manages
 the Battle Stance visits it starts itself (or where it casts an Overpower):
-if you're in Battle Stance on your own, after a Charge say, it leaves your
-stance alone, like it never touches your target. Talents are read again at
+if you're in Battle Stance on your own, after a Charge say, it swaps you to
+Berserker as soon as that loses **no** rage at all (your rage within what
+Tactical Mastery keeps), and otherwise leaves your stance alone. Talents are read again at
 every combat start and written to the log ("talents: Tactical Mastery
 x/5..."). Without
 Tactical Mastery, a swap keeps no rage, so Overpower only happens when your
@@ -985,6 +986,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `USE_OVERPOWER` | on | window | Overpower after a dodge, with the stance dance. |
 | `OP_RAGE_LOSS` | 0 | window | Rage a stance swap may throw away above what Tactical Mastery keeps. |
 | `OP_TAKE_BLOCKED` | on | window | Overpower may take a slot that costs the next Slam. |
+| `AUTO_BERSERKER` | on | `/run` | In combat in your own Battle Stance (after a Charge): to Berserker as soon as the swap loses no rage. |
 | `OP_STAY_BATTLE` | on | window | Stay in Battle after Overpower to dump the rage a swap would lose. |
 | `OP_STAY_MAX` | 3 | `/run` | Longest stay in Battle when that's on. |
 | `TARGET_SETTLE` | 0.4 | `/run` | After a target change, WarSlam doesn't queue through Nampower for this long (a queued spell keeps the target it was queued on). |

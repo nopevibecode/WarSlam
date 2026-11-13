@@ -81,6 +81,7 @@ local CFG = {
   USE_OVERPOWER  = true,  -- Overpower after a dodge, dancing Berserker -> Battle -> Berserker
   OP_RAGE_LOSS   = 0,     -- rage a stance swap may throw away (above what Tactical Mastery keeps)
   OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
+  OP_FROM_AOE    = false, -- open the Overpower window on Whirlwind / Cleave dodges too (can be another mob)
   OP_STAY_BATTLE = false, -- after Overpower, stay in Battle to spend rage before swapping back
   OP_STAY_MAX    = 3,     -- ...but never longer than this many seconds
   OP_COST        = 5,
@@ -857,6 +858,12 @@ f:SetScript("OnEvent", function()
     -- "Your Bloodthirst was dodged by X." -> Overpower window
     if arg1 then
       local _, _, sp, who = string.find(arg1, "^Your (.-) was dodged by (.+)%.$")
+      -- Whirlwind / Cleave hit several targets: the one that dodged may be
+      -- another mob with your target's name, and Overpower would be refused
+      if who and (sp == "Whirlwind" or sp == "Cleave") and not CFG.OP_FROM_AOE then
+        if Tracing() then Dbg("OVERPOWER: " .. who .. " dodged your " .. sp .. " (maybe not your target): ignored") end
+        who = nil
+      end
       if who then
         opUntil, opTarget = GetTime() + CFG.OP_WINDOW, who
         if Tracing() then Dbg("OVERPOWER window: " .. who .. " dodged your " .. sp) end

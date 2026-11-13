@@ -118,16 +118,20 @@ function WarSlamProfileUnlink()
   end
 end
 
--- Base profiles: simulated best settings for common 2H speeds (Flurry + ~6% haste).
+-- Base profiles: simulated best settings for common 2H speeds (Flurry + ~6% haste),
+-- re-tuned for 1.1 (Overpower, Bloodrage, pairs) on estimated damage, at
+-- dummy / raid / heavy rage income, with crit variance.
 -- Created once, from your current settings, with these changes:
 local BASE_PROFILES = {
   -- Slow weapon rotation "auto": 3.40 / 3.50 are fast weapons (Slam trade, BT + WW pair),
-  -- 3.60 / 3.80 slow ones
-  ["Base 3.40"] = { speed = 3.40, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto" },  -- Auto window would cost 2-4 strikes/min here
-  ["Base 3.50"] = { speed = 3.50, SLAM_FRAC = "auto", SLOW_WEAPON = "auto" },
-  ["Base 3.60"] = { speed = 3.60, SLAM_FRAC = "auto", SLOW_WEAPON = "auto" },
-  ["Base 3.80"] = { speed = 3.80, SLAM_FRAC = "auto", SLOW_WEAPON = "auto" },
+  -- 3.60 / 3.80 slow ones. Heroic Strike only near the rage cap: the rage does
+  -- more as Bloodthirst / Whirlwind / Slam.
+  ["Base 3.40"] = { speed = 3.40, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 90 },
+  ["Base 3.50"] = { speed = 3.50, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 90 },
+  ["Base 3.60"] = { speed = 3.60, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 94 },  -- +4.1% over "auto" / 72
+  ["Base 3.80"] = { speed = 3.80, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 94 },  -- +4.6% over "auto" / 72
 }
+local BASE_KEYS = { "SLAM_FRAC", "SLOW_WEAPON", "ST_DUMP" }
 
 local function CreateBaseProfiles()
   local v = WarSlamSettings.baseProfiles
@@ -135,24 +139,24 @@ local function CreateBaseProfiles()
     for name, b in pairs(BASE_PROFILES) do
       if not WarSlamSettings.profiles[name] then
         local p = Snapshot()
-        p.SLAM_FRAC, p.SLOW_WEAPON = b.SLAM_FRAC, b.SLOW_WEAPON
+        for i = 1, table.getn(BASE_KEYS) do p[BASE_KEYS[i]] = b[BASE_KEYS[i]] end
         WarSlamSettings.profiles[name] = p
       end
     end
-  elseif v < 2 then
-    -- version 1 forced "Slow weapon rotation = Yes" in every base profile, which
-    -- switched off the fast weapon rules (trade, BT + WW pair) for 3.40 / 3.50
-    for name in pairs(BASE_PROFILES) do
+  elseif v < 3 then
+    -- version 3: re-tuned Slam window and Heroic Strike threshold (1.1).
+    -- Version 1 also forced "Slow weapon rotation = Yes" in every base profile.
+    for name, b in pairs(BASE_PROFILES) do
       local p = WarSlamSettings.profiles[name]
-      if p and p.SLOW_WEAPON == "yes" then p.SLOW_WEAPON = "auto" end
+      if p then for i = 1, table.getn(BASE_KEYS) do p[BASE_KEYS[i]] = b[BASE_KEYS[i]] end end
     end
     local act = WarSlamSettings.active
-    if act and BASE_PROFILES[act] and CFG.SLOW_WEAPON == "yes" then
-      CFG.SLOW_WEAPON = "auto"
+    if act and BASE_PROFILES[act] then
+      Apply(BASE_PROFILES[act], BASE_KEYS)
       Save()
     end
   end
-  WarSlamSettings.baseProfiles = 2
+  WarSlamSettings.baseProfiles = 3
 end
 
 -- base profile for a weapon speed, if one exists (and still exists)

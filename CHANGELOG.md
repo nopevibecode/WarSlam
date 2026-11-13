@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Base profiles re-tuned** on simulated damage with Overpower, Bloodrage
+  and pairs: Heroic Strike at 90 rage (3.40, 3.50) or 94 rage (3.60, 3.80)
+  instead of 72, and a 0.60 Slam window on 3.40, 3.60 and 3.80. The
+  simulation shows +1% to +6% in raids. Applied once to your existing base
+  profiles.
+
 ## 1.1 — 2026-11-13
 
 ### Overpower and stance dancing

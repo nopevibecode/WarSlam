@@ -270,15 +270,34 @@ game) or the minimap icon position.
 ### Base profiles
 
 WarSlam comes with 4 base profiles for the most common 2H speeds, created
-once from your current settings. They come from simulated fights with Flurry
-and about 6% haste, with rage matched to real dummy logs:
+once from your current settings. They come from simulated fights (version
+1.1, with Overpower, Bloodrage and pairs) with Flurry and about 6% haste,
+scored on estimated damage at dummy, raid and heavy rage income, with crit
+variance:
 
-| Profile | Slam window | Slow weapon | Simulation |
-|---|---|---|---|
-| **Base 3.40** | 0.60 | Auto (= fast) | At a 2.47s swing, a window above ~0.62 costs 2–4 strikes per minute, so the Auto window is avoided. As a fast weapon, it gets the Slam trade and the BT + WW pair. |
-| **Base 3.50** | Auto | Auto (= fast) | Fast weapon rules: without the BT + WW pair, Whirlwind barely gets a turn (0.7/min on the dummy, against 6/min with the pair). |
-| **Base 3.60** | Auto | Auto (= slow) | Same strikes for every window. Rage, not timing, is the limit. |
-| **Base 3.80** | Auto | Auto (= slow) | Same, and the fast rules were slightly worse in raids. |
+| Profile | Slam window | Slow weapon | Heroic Strike at | Gain over Auto / 72 (dummy / raid / heavy) |
+|---|---|---|---|---|
+| **Base 3.40** | 0.60 | Auto (= fast) | 90 | +0.3% / +2.0% / +0.4% |
+| **Base 3.50** | Auto | Auto (= fast) | 90 | +0.2% / +1.3% / +0.5% |
+| **Base 3.60** | 0.60 | Auto (= slow) | 94 | +1.1% / +5.6% / +5.6% |
+| **Base 3.80** | 0.60 | Auto (= slow) | 94 | +0.9% / +5.9% / +6.8% |
+
+What the simulation found:
+
+- **Heroic Strike near the rage cap only.** Rage does more as Bloodthirst,
+  Whirlwind or Slam than as Heroic Strike, so the dump threshold went from 72
+  to 90–94. Most of the gain is in raids, where rage comes in faster.
+- **Slam window 0.60 on 3.40, 3.60 and 3.80.** Starting a Slam a little later
+  in the swing, even if it delays the next auto slightly, beats skipping it.
+  On 3.50 the Auto window stays best.
+- **Not speed-dependent:** Overpower's rage-loss limit and "...even if it
+  costs the next Slam" made no measurable difference, and pair settings stay
+  at their defaults.
+
+Updating to 1.1 applies the new Slam window and Heroic Strike values to your
+existing base profiles once (other settings in them are kept), and to your
+current settings if a base profile is active. Profiles you saved yourself
+aren't touched.
 
 **A weapon without a link uses the base profile of its speed**, if there is
 one: equip an unlinked 3.60 weapon and "Base 3.60" loads. Your own links

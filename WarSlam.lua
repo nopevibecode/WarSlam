@@ -82,6 +82,7 @@ local CFG = {
   OP_RAGE_LOSS   = 0,     -- rage a stance swap may throw away (above what Tactical Mastery keeps)
   BLOODRAGE      = "dw",  -- Bloodrage to complete a pair short of rage: "off", "dw" (only while Death Wish is active or on cooldown), "always"
   BLOODRAGE_GAIN = 10,    -- rage Bloodrage gives at once
+  BLOODRAGE_CD   = 60,    -- Bloodrage's cooldown
   BLOODRAGE_MIN_HP = 0.30, -- never below this share of your health (Bloodrage costs health)
   OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
   TARGET_SETTLE  = 0.4,   -- no Nampower queueing this long after a target change
@@ -1290,8 +1291,14 @@ end
 local function BloodrageReady()
   if CFG.BLOODRAGE ~= "dw" and CFG.BLOODRAGE ~= "always" then return false end
   if not inCombat or not Index("Bloodrage") or CD("Bloodrage") > 0.02 then return false end
-  -- "dw": only while Death Wish is active or on cooldown (you used it)
-  if CFG.BLOODRAGE == "dw" and not (Index("Death Wish") and CD("Death Wish") > CFG.GCD + 0.1) then return false end
+  -- "dw": only after you used Death Wish, and only while Bloodrage would be
+  -- back before Death Wish is (its cooldown has more left than Bloodrage's),
+  -- so a Bloodrage never sits on cooldown when Death Wish comes up again.
+  -- Death Wish active (30s of its 3 min) always qualifies.
+  if CFG.BLOODRAGE == "dw" then
+    if not Index("Death Wish") then return false end
+    if CD("Death Wish") <= CFG.BLOODRAGE_CD + 5 then return false end
+  end
   local hp, mx = UnitHealth("player"), UnitHealthMax("player")
   if mx and mx > 0 and hp / mx < CFG.BLOODRAGE_MIN_HP then return false end
   return true

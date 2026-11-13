@@ -405,8 +405,10 @@ its rage arrives a moment later, so the strike goes on the next press.
 Setting **Bloodrage for pairs** (Rotation tab, Cooldowns):
 
 - **Off**: never.
-- **With Death Wish** (default): only while Death Wish is active or on
-  cooldown, so Bloodrage is kept for your Death Wish window otherwise.
+- **With Death Wish** (default): only after you used Death Wish, and only
+  while its cooldown has more than about 65s left. That covers the whole
+  Death Wish buff and the next ~1min50, and Bloodrage (60s cooldown) is
+  always back before Death Wish is, for your next Death Wish window.
 - **Always**: whenever it's off cooldown.
 
 Never below 30% health (Bloodrage costs health). In the simulator at dummy
@@ -985,7 +987,7 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `TARGET_SETTLE` | 0.4 | `/run` | After a target change, WarSlam doesn't queue through Nampower for this long (a queued spell keeps the target it was queued on). |
 | `OP_FROM_AOE` | off | `/run` | Without Nampower: also open the Overpower window on Whirlwind / Cleave dodges (may be another mob). With Nampower they always count, checked by mob ID. |
 | `OP_WINDOW` | 4 | `/run` | How long after a dodge WarSlam still goes for Overpower. 5s in theory, but on OctoWoW it's refused past about 4s. If one is refused anyway, WarSlam takes the window as closed and swaps back. |
-| `BLOODRAGE` | dw | window | Bloodrage to complete a pair: `off`, `dw` (while Death Wish is active or on cooldown), `always`. |
+| `BLOODRAGE` | dw | window | Bloodrage to complete a pair: `off`, `dw` (after Death Wish, while its cooldown outlasts Bloodrage's), `always`. |
 | `BLOODRAGE_MIN_HP` | 0.30 | `/run` | No Bloodrage below this share of your health. |
 | `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
 | `DW_JUJU_DELAY` | 9 | window | Seconds between Death Wish and the Juju Flurry (5–15). It waits for the end of a Slam cast, so it can come a little later. |

@@ -83,10 +83,9 @@ local CFG = {
   BLOODRAGE      = "dw",  -- Bloodrage to complete a pair short of rage: "off", "dw" (only while Death Wish is active or on cooldown), "always"
   BLOODRAGE_GAIN = 10,    -- rage Bloodrage gives at once
   BLOODRAGE_CD   = 60,    -- Bloodrage's cooldown
-  BLOODRAGE_DW_SLACK = 10, -- Bloodrage may come back up to this long after Death Wish is usable again
+  BLOODRAGE_DW_SLACK = 15, -- Bloodrage may come back up to this long after Death Wish is usable again (it waits for 15s into Death Wish anyway)
   BLOODRAGE_MIN_HP = 0.30, -- never below this share of your health (Bloodrage costs health)
-  BLOODRAGE_DW_AFTER = 15, -- no Bloodrage yet this far into Death Wish (0 = off)...
-  BLOODRAGE_DW_BELOW = 40, -- ...use it the next time rage drops below this
+  BLOODRAGE_DW_AFTER = 15, -- Bloodrage (and its Enrage) for the 2nd half of Death Wish: held before this many seconds in, used from then on as soon as it doesn't overflow rage (0 = off)
   DW_DURATION    = 30,    -- Death Wish lasts this long
   OP_TAKE_BLOCKED = true, -- Overpower may take a GCD slot that costs the next Slam
   TARGET_SETTLE  = 0.4,   -- no Nampower queueing this long after a target change
@@ -1303,6 +1302,11 @@ local function BloodrageReady()
   -- Death Wish's cooldown must have more than (60 - 10) = 50s left.
   local dwLeft = Index("Death Wish") and CD("Death Wish") or nil
   local enough = dwLeft and dwLeft > CFG.BLOODRAGE_CD - CFG.BLOODRAGE_DW_SLACK
+  -- first half of Death Wish: keep it for the second half (Enrage overlap)
+  if dwLeft and CFG.BLOODRAGE_DW_AFTER > 0 then
+    local start, dur = GetSpellCooldown(Index("Death Wish"), BOOKTYPE_SPELL)
+    if start and dur and dur >= 10 and GetTime() - start < CFG.BLOODRAGE_DW_AFTER then return false end
+  end
   if CFG.BLOODRAGE == "dw" then
     -- only after you used Death Wish (active or on cooldown, with enough left)
     if not enough then return false end
@@ -1622,17 +1626,17 @@ end
 local function CooldownSteps(now)
   DWCheck(now)
   if not casting then UseJuju(now) end
-  -- Bloodrage always goes out during Death Wish: if no pair needed it in the
-  -- first BLOODRAGE_DW_AFTER seconds, use it the next time rage drops below
-  -- BLOODRAGE_DW_BELOW while Death Wish is still on
+  -- Bloodrage (and the Enrage it procs) goes out in the second half of
+  -- Death Wish: from BLOODRAGE_DW_AFTER seconds in, as soon as its rage
+  -- fits under the cap
   if casting or CFG.BLOODRAGE_DW_AFTER <= 0 then return end
   local start = DWStart()
   if not start then return end
   local into = now - start
   if into < CFG.BLOODRAGE_DW_AFTER or into >= CFG.DW_DURATION then return end
   local rage = UnitMana("player")
-  if rage >= CFG.BLOODRAGE_DW_BELOW or not BloodrageReady() then return end
-  Log(string.format("BLOODRAGE: Death Wish +%.0fs, none yet, rage %d", into, rage))
+  if rage + CFG.BLOODRAGE_GAIN > (UnitManaMax("player") or 100) or not BloodrageReady() then return end
+  Log(string.format("BLOODRAGE: Death Wish +%.1fs, rage %d", into, rage))
   CastSpellByName("Bloodrage")
 end
 

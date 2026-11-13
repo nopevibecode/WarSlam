@@ -407,17 +407,19 @@ Setting **Bloodrage for pairs** (Rotation tab, Cooldowns):
 
 - **Off**: never.
 - **With Death Wish** (default): only after you used Death Wish, and only
-  while its cooldown has more than 50s left. That covers the whole Death
+  while its cooldown has more than 45s left. That covers the whole Death
   Wish buff and the next ~2 minutes, and Bloodrage (60s cooldown) is always
-  back within 10s of Death Wish being usable again, so it's there during
+  back within 15s of Death Wish being usable again, so it's there during
   your next Death Wish window.
 - **Always**: whenever it's off cooldown, except when Death Wish comes back
-  within 50s (it's kept for that window). With Death Wish ready and unused,
+  within 45s (it's kept for that window). With Death Wish ready and unused,
   or no Death Wish at all, it's free to fire.
 
-In both modes Bloodrage always goes out during Death Wish: if no pair needed
-it in the first 15s of Death Wish, it fires the next time your rage drops
-below 40 while Death Wish is still on.
+In both modes Bloodrage is kept for the **second half of Death Wish**, so the
+Enrage it procs (+20% damage for 8s) overlaps it: during the first 15s of
+Death Wish it's held (even for pairs), and from 15s in it goes out as soon as
+its 10 rage fits under your rage cap (never wasted by overflowing). Outside
+Death Wish the pair rules above still apply.
 
 Never below 30% health (Bloodrage costs health). In the simulator at dummy
 rage it fires about once a minute (its cooldown) and turns about one Slam a
@@ -997,10 +999,9 @@ permanently, edit the `CFG` table at the top of `WarSlam.lua`.
 | `OP_FROM_AOE` | off | `/run` | Without Nampower: also open the Overpower window on Whirlwind / Cleave dodges (may be another mob). With Nampower they always count, checked by mob ID. |
 | `OP_WINDOW` | 4 | `/run` | How long after a dodge WarSlam still goes for Overpower. 5s in theory, but on OctoWoW it's refused past about 4s. If one is refused anyway, WarSlam takes the window as closed and swaps back. |
 | `BLOODRAGE` | dw | window | Bloodrage to complete a pair: `off`, `dw` (after Death Wish, while its cooldown outlasts Bloodrage's), `always`. |
-| `BLOODRAGE_DW_SLACK` | 10 | `/run` | Bloodrage may come back up to this many seconds after Death Wish is usable again. |
+| `BLOODRAGE_DW_SLACK` | 15 | `/run` | Bloodrage may come back up to this many seconds after Death Wish is usable again. |
 | `BLOODRAGE_MIN_HP` | 0.30 | `/run` | No Bloodrage below this share of your health. |
-| `BLOODRAGE_DW_AFTER` | 15 | `/run` | If no pair used Bloodrage this many seconds into Death Wish, it goes out the next time rage drops below `BLOODRAGE_DW_BELOW` (0 = off). |
-| `BLOODRAGE_DW_BELOW` | 40 | `/run` | Rage under which that late Death Wish Bloodrage goes out. |
+| `BLOODRAGE_DW_AFTER` | 15 | `/run` | Bloodrage is held for this many seconds into Death Wish, then used as soon as it doesn't overflow rage (0 = off). |
 | `DW_JUJU` | on | window | Use a Juju Flurry after an armed Death Wish (skipped if you have none). |
 | `DW_JUJU_DELAY` | 9 | window | Seconds between Death Wish and the Juju Flurry (5–15). It waits for the end of a Slam cast, so it can come a little later. |
 | `PAIR_TIMEOUT` | 4 | `/run` | Forget an unfinished pair after this many seconds. |

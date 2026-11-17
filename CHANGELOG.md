@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2 — 2026-11-18
 
 - **Base profiles re-tuned for slow weapons** on simulated damage with
   Overpower, Bloodrage and pairs: Base 3.60 and Base 3.80 now queue Heroic

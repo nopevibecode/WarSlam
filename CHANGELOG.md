@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3 — 2026-11-18
 
 - **Two new base profiles:** Base 3.30 (fast rules, 0.60 Slam window, Heroic
   Strike at 94, pairs at most 10 rage short: +4.3% over the defaults in the

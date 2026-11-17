@@ -25,6 +25,10 @@
   Bloodthirst and Whirlwind on cooldown, typically the swing after a pair)
   now refreshes a full Sunder stack early, when it has 15s or less left
   (`SUNDER_HOLE`), so the refresh doesn't take another strike's slot later.
+  On trash, a hole with rage at the Heroic Strike threshold or more adds a
+  Sunder stack instead of wasting the GCD (seen at 100 rage on Flamewaker
+  Elites).
+- **Longer log:** 20,000 lines instead of 5,000, so a full raid fits.
 - **No pair once this swing's Slam is lost:** if the swing had no Slam and
   its Slam window has closed, a Bloodthirst + Whirlwind pair would also cost
   the next Slam (two strikes for two swings) and leave a hole. The first

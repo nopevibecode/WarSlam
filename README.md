@@ -945,8 +945,10 @@ opportunity strike when BT / WW are up but short of rage.
 - **5 stacks, 15s or less left (`SUNDER_HOLE`), in a hole:** when a GCD
   slot is free but nothing else can use it (Bloodthirst and Whirlwind on
   cooldown for the whole GCD, typically the swing after a pair), the refresh
-  goes there early, so it doesn't take another strike's slot later. Only if
-  the next auto still pays for the next Slam.
+  goes there early, so it doesn't take another strike's slot later. On mobs
+  without the full Sunder rules (trash), a hole with rage at the Heroic
+  Strike threshold or more adds a Sunder stack instead of wasting the GCD.
+  Only if the next auto still pays for the next Slam.
 - **4s or less left (`SUNDER_URGENT`):** the safety net, for when no GCD slot
   came up in time (rage, procs, a GCD blocked by the timing rule). Sunder
   goes before everything, Slam included.

@@ -184,7 +184,7 @@ end
 --   WTF\Account\<ACCOUNT>\SavedVariables\WarSlam.lua
 -- The game writes that file on /reload or logout.
 ------------------------------------------------------------------------
-local LOG_MAX = 5000
+local LOG_MAX = 20000     -- about a 2-hour raid with tracing on
 local function Log(msg)
   if not (WarSlamLog and WarSlamLog.enabled) then return end
   local lines = WarSlamLog.lines
@@ -2196,13 +2196,19 @@ local function Run(modeName)
       end
     end
   end
-  -- a hole: free GCD slot, nothing else usable. Refresh a full Sunder stack
-  -- early here, so the refresh doesn't take another strike's slot later,
-  -- as long as the next auto still pays for the next Slam
-  if not pvp and CFG.USE_SUNDER and CFG.SUNDER_HOLE > 0 and not opener and R.SunderFull()
-     and R.ModeHasSunder(mode) and R.SunderStacks() >= 5 and Index("Sunder Armor")
+  -- a hole: free GCD slot, nothing else usable. Sunder there: refresh a full
+  -- stack early (so the refresh doesn't take another strike's slot later), or,
+  -- on a mob without the full Sunder rules (trash), add a stack: the GCD is
+  -- otherwise wasted. Only if the next auto still pays for the next Slam
+  if not pvp and CFG.USE_SUNDER and CFG.SUNDER_HOLE > 0 and not opener
+     and R.ModeHasSunder(mode) and Index("Sunder Armor")
      and Ready("Sunder Armor", free, lead) then
+    local stacks = R.SunderStacks()
     local left = R.SunderTimeLeft(now + lead)
+    -- trash: only with rage to spare (at the dump threshold), else the
+    -- rage does more in the next strikes
+    local want = (stacks >= 5 and left and left <= CFG.SUNDER_HOLE)
+                 or (stacks < 5 and not R.SunderFull() and free >= mode.dumpAt)
     local incoming = queuedName and 0 or math.floor(autoRage - autoDev / 2)
     -- a real hole: no damage strike comes back before this GCD is over
     local soon = false
@@ -2210,9 +2216,10 @@ local function Run(modeName)
     for i = 1, table.getn(strikes) do
       if Index(strikes[i]) and CD(strikes[i]) <= lead + CFG.GCD then soon = true end
     end
-    if left and left <= CFG.SUNDER_HOLE and not soon
+    if want and not soon
        and free - COST["Sunder Armor"]() + incoming >= COST["Slam"]() then
-      if Tracing() then Dbg(string.format("SUNDER refresh in a hole: %.1fs left, rage %d", left, free)) end
+      if Tracing() then Dbg(string.format("SUNDER in a hole: %d stacks, %s left, rage %d",
+        stacks, left and string.format("%.1fs", left) or "?", free)) end
       R.CastSunder(now, lead)
       return
     end

@@ -272,7 +272,7 @@ game) or the minimap icon position.
 
 ### Base profiles
 
-WarSlam comes with 4 base profiles for the most common 2H speeds, created
+WarSlam comes with 6 base profiles for the most common 2H speeds, created
 once from your current settings. They come from simulated fights (version
 1.1, with Overpower, Bloodrage and pairs) with Flurry and about 6% haste,
 scored on estimated damage at dummy, raid and heavy rage income, with crit
@@ -280,9 +280,11 @@ variance:
 
 | Profile | Slam window | Slow weapon | Heroic Strike at | Gain over Auto / 72 (dummy / raid / heavy) |
 |---|---|---|---|---|
+| **Base 3.30** | 0.60 | Auto (= fast) | 94 | +2.2% / +4.8% / +6.0% (Slam window, see below) |
 | **Base 3.40** | Auto | Auto (= fast) | 72 | pair leeway 10 instead of 20: +0.4% (see below) |
 | **Base 3.50** | Auto | Auto (= fast) | 72 | pair leeway 10 instead of 20: +0.4% (see below) |
 | **Base 3.60** | 0.60 | Auto (= slow) | 94 | +1.1% / +5.6% / +5.6% |
+| **Base 3.70** | Auto | Auto (= slow) | 94 | +0.4% / +2.0% / +2.0% |
 | **Base 3.80** | 0.60 | Auto (= slow) | 94 | +0.9% / +5.9% / +6.8% |
 
 What the simulation found:
@@ -291,14 +293,21 @@ What the simulation found:
   does more as Bloodthirst, Whirlwind or Slam than as Heroic Strike, so the
   dump threshold went from 72 to 94. Most of the gain is in raids, where rage
   comes in faster.
-- **Slow weapons: Slam window 0.60.** Starting a Slam a little later in the
-  swing, even if it delays the next auto slightly, beats skipping it.
+- **Slow weapons: Slam window 0.60 on 3.60 and 3.80.** Starting a Slam a
+  little later in the swing, even if it delays the next auto slightly, beats
+  skipping it. On 3.70 the Auto window was as good as 0.65 and better than
+  0.60, so it stays on Auto.
 - **Fast weapons (3.40, 3.50): Auto window, Heroic Strike at 72, pairs at
   most 10 rage short.** With the fast rules (Slam trade, BT + WW pairs) the
   Auto window never delays an auto and was as good as or better than any
   fixed window, and the Heroic Strike threshold made no measurable difference
   (pairs already spend the rage). Letting a pair be 20 rage short cost about
   0.4% (more late pairs, fewer Slams); 0 or 10 were equal.
+- **3.30 is the exception among fast weapons:** a Slam takes about 76% of
+  its swing (2.5 / 3.30), so the Auto window only allows one in the first
+  quarter of the swing and many get skipped. A 0.60 window (a slightly late
+  Slam) gave more Slams per minute and +4.3% overall, and
+  Heroic Strike at 94 helped there too.
 - **No measurable difference (under 0.3%, at every speed):** Overpower's
   rage-loss limit (0 to 30), "...even if it costs the next Slam", "Stay in
   Battle to dump rage", GCD slack (0 to 0.3s) and Heroic Strike near a pair
@@ -306,7 +315,9 @@ What the simulation found:
   1%. The double-press lock can't be judged here: the simulator has no
   network latency.
 
-Updating applies the new Slam window and Heroic Strike values to your
+Base 3.30 and Base 3.70 were added in 1.3: updating creates them from your
+current settings (a base profile you deleted yourself isn't re-created).
+Updating to 1.1 applied the new Slam window and Heroic Strike values to your
 existing base profiles once (other settings in them are kept), and to your
 current settings if a base profile is active. Profiles you saved yourself
 aren't touched.
@@ -568,7 +579,7 @@ logs**, and **Show the minimap button** (also `/warslam minimap`).
 
 **Defaults**, at the bottom of every tab, puts WarSlam's settings back to the
 values above, then applies the simulated values of the base profile for your
-weapon's speed if there is one (3.40, 3.50, 3.60, 3.80: Slam window, Heroic
+weapon's speed if there is one (3.30 to 3.80: Slam window, Heroic
 Strike threshold, pair leeway). If that base profile is the active one, it's
 reset too. It doesn't change Nampower's settings.
 

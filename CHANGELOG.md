@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Two new base profiles:** Base 3.30 (fast rules, 0.60 Slam window, Heroic
+  Strike at 94, pairs at most 10 rage short: +4.3% over the defaults in the
+  simulator, as a Slam takes ~76% of a 3.30 swing) and Base 3.70 (slow rules,
+  Auto window, Heroic Strike at 94: +1.5%). Updating creates them from your
+  current settings; your other profiles aren't touched.
+
 ## 1.2 — 2026-11-18
 
 - **Base profiles re-tuned for slow weapons** on simulated damage with

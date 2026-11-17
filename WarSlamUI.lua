@@ -123,31 +123,36 @@ end
 -- dummy / raid / heavy rage income, with crit variance.
 -- Created once, from your current settings, with these changes:
 local BASE_PROFILES = {
-  -- Slow weapon rotation "auto": 3.40 / 3.50 are fast weapons (Slam trade, BT + WW pair),
-  -- 3.60 / 3.80 slow ones. On slow ones, Heroic Strike only near the rage cap:
+  -- Slow weapon rotation "auto": 3.30 / 3.40 / 3.50 are fast weapons (Slam trade, BT + WW pair),
+  -- 3.60 / 3.70 / 3.80 slow ones. On slow ones, Heroic Strike only near the rage cap:
   -- the rage does more as Bloodthirst / Whirlwind / Slam.
   -- fast weapons: the window and the Heroic Strike threshold made no difference;
   -- pairs may be at most 10 rage short (20 cost ~0.4%: Slams lost to late pairs)
+  -- 3.30 (fast) is the exception: Slam takes ~76% of its swing, so the Auto
+  -- window skips many Slams; 0.60 (a slightly late Slam) gave +4.3%
+  ["Base 3.30"] = { speed = 3.30, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 94, PAIR_RAGE = 10, since = 6 },
   ["Base 3.40"] = { speed = 3.40, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 72, PAIR_RAGE = 10 },
   ["Base 3.50"] = { speed = 3.50, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 72, PAIR_RAGE = 10 },
   ["Base 3.60"] = { speed = 3.60, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 94 },  -- +4.1% over "auto" / 72
+  ["Base 3.70"] = { speed = 3.70, SLAM_FRAC = "auto", SLOW_WEAPON = "auto", ST_DUMP = 94, since = 6 },  -- +1.5%; 0.60 was worse here
   ["Base 3.80"] = { speed = 3.80, SLAM_FRAC = 0.60,   SLOW_WEAPON = "auto", ST_DUMP = 94 },  -- +4.6% over "auto" / 72
 }
 local BASE_KEYS = { "SLAM_FRAC", "SLOW_WEAPON", "ST_DUMP", "PAIR_RAGE" }
 
 local function CreateBaseProfiles()
   local v = WarSlamSettings.baseProfiles
-  if not v then
-    for name, b in pairs(BASE_PROFILES) do
-      if not WarSlamSettings.profiles[name] then
-        local p = Snapshot()
-        for i = 1, table.getn(BASE_KEYS) do
-          if b[BASE_KEYS[i]] ~= nil then p[BASE_KEYS[i]] = b[BASE_KEYS[i]] end
-        end
-        WarSlamSettings.profiles[name] = p
+  -- create base profiles: all on a first run, later only the ones added
+  -- since (a base profile you deleted yourself stays deleted)
+  for name, b in pairs(BASE_PROFILES) do
+    if (not v or (b.since and v < b.since)) and not WarSlamSettings.profiles[name] then
+      local p = Snapshot()
+      for i = 1, table.getn(BASE_KEYS) do
+        if b[BASE_KEYS[i]] ~= nil then p[BASE_KEYS[i]] = b[BASE_KEYS[i]] end
       end
+      WarSlamSettings.profiles[name] = p
     end
-  elseif v < 5 then
+  end
+  if v and v < 5 then
     -- version 3-5: re-tuned Slam window and Heroic Strike threshold (1.1).
     -- Version 1 also forced "Slow weapon rotation = Yes" in every base profile.
     for name, b in pairs(BASE_PROFILES) do
@@ -162,7 +167,7 @@ local function CreateBaseProfiles()
       Save()
     end
   end
-  WarSlamSettings.baseProfiles = 5
+  WarSlamSettings.baseProfiles = 6
 end
 
 -- base profile for a weapon speed, if one exists (and still exists)
@@ -766,7 +771,7 @@ local function Build()
     function() WarSlamProfileUnlink(); frame.RefreshAll() end)
 
   local pNote = Label(C1, y - 186, "GameFontDisableSmall", 250)
-  pNote:SetText("Equipping a linked weapon loads its profile. An unlinked weapon uses the Base profile of its speed (3.40 / 3.50 / 3.60 / 3.80) if there is one.")
+  pNote:SetText("Equipping a linked weapon loads its profile. An unlinked weapon uses the Base profile of its speed (3.30 / 3.40 / 3.50 / 3.60 / 3.70 / 3.80) if there is one.")
 
   -- right column: test, logs, minimap
   y = TOP
@@ -816,7 +821,7 @@ local function Build()
   reset:SetHeight(22)
   reset:SetPoint("BOTTOM", frame, "BOTTOM", 0, 18)
   reset:SetText("Defaults")
-  Tip(reset, "Resets WarSlam's own settings (Sunder Armor on only with Nampower in use), with the simulated values for your weapon's speed when there's a base profile for it (3.40, 3.50, 3.60, 3.80). If that base profile is active, it's reset too.\nNampower settings are not changed.")
+  Tip(reset, "Resets WarSlam's own settings (Sunder Armor on only with Nampower in use), with the simulated values for your weapon's speed when there's a base profile for it (3.30 to 3.80). If that base profile is active, it's reset too.\nNampower settings are not changed.")
   reset:SetScript("OnClick", function()
     Apply(DEFAULTS, PROFILE_KEYS)   -- the minimap button stays where it is
     CFG.USE_SUNDER = SunderDefault()
